@@ -118,6 +118,17 @@ fun MainScreenWithPlayer(
         isAnalyzing = isAnalyzing,
         onSelectTrack = {
             filePickerLauncher.launch(arrayOf("audio/*"))
+        },
+        onAnalyzeAssetTrack = { assetFileName ->
+            // Analyze built-in track
+            scope.launch {
+                isAnalyzing = true
+                // Create asset URI for analysis
+                val assetUri = Uri.parse("asset:///tracks/$assetFileName")
+                val result = keyDetector.detectKey(assetUri)
+                detectedKey = result?.key
+                isAnalyzing = false
+            }
         }
     )
 }

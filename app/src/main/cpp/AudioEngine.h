@@ -33,6 +33,13 @@ public:
     void setMasterVolume(float volume);
     void setWaveType(int type); // 0=Sine, 1=Sawtooth, 2=Square, 3=Triangle
     
+    // Guitar parameters
+    void setGuitarParams(float sustain, float gain, float distortion, float reverb);
+    
+    // Wah pedal
+    void setWahEnabled(bool enabled);
+    void setWahPosition(float position);  // 0.0 = heel, 1.0 = toe
+    
     // Callback Oboe
     oboe::DataCallbackResult onAudioReady(
         oboe::AudioStream *audioStream,

@@ -1,7 +1,10 @@
 package com.smartinstrument.app.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -11,11 +14,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.smartinstrument.app.R
@@ -41,17 +51,20 @@ fun MainScreen(
     detectedKey: MusicalKey?,
     isAnalyzing: Boolean,
     onSelectTrack: () -> Unit,
+    onAnalyzeAssetTrack: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // State
     var currentKey by remember { mutableStateOf(MusicalKey(Note.C, ScaleType.MINOR)) }
     var numRows by remember { mutableIntStateOf(18) }  // Default 18 rows
-    var waveType by remember { mutableIntStateOf(NativeAudioEngine.WAVE_SAWTOOTH) }
+    var waveType by remember { mutableIntStateOf(NativeAudioEngine.WAVE_SINE) }  // Default: Organ
     var synthVolume by remember { mutableFloatStateOf(0.5f) }   // Synth al 50%
     var trackVolume by remember { mutableFloatStateOf(0.8f) }   // Track all'80%
-    var showSettings by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(true) }  // Settings open by default
     var showNoteLabels by remember { mutableStateOf(true) }
     var showPlayer by remember { mutableStateOf(true) }
+    var guitarParams by remember { mutableStateOf(GuitarParams()) }
+    var wahEnabled by remember { mutableStateOf(false) }
     
     // Track player state
     val isPlaying by trackPlayer.isPlaying.collectAsState()
@@ -87,6 +100,21 @@ fun MainScreen(
         trackPlayer.setVolume(trackVolume)
     }
     
+    // Update guitar parameters
+    LaunchedEffect(guitarParams) {
+        audioEngine.setGuitarParams(
+            guitarParams.sustain,
+            guitarParams.gain,
+            guitarParams.distortion,
+            guitarParams.reverb
+        )
+    }
+    
+    // Update wah pedal
+    LaunchedEffect(wahEnabled) {
+        audioEngine.setWahEnabled(wahEnabled)
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -104,6 +132,40 @@ fun MainScreen(
                     }
                 },
                 actions = {
+                    // Wah pedal controls (only visible when Guitar is selected)
+                    if (waveType == NativeAudioEngine.WAVE_GUITAR) {
+                        // Cry Baby Wah Pedal Control (only when wah is enabled)
+                        if (wahEnabled) {
+                            WahPedalControl(
+                                onPositionChange = { position ->
+                                    audioEngine.setWahPosition(position)
+                                },
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                        }
+                        
+                        // Main WAH on/off button (to the right of pedal)
+                        FilterChip(
+                            selected = wahEnabled,
+                            onClick = { 
+                                wahEnabled = !wahEnabled
+                            },
+                            label = { 
+                                Text(
+                                    text = "WAH",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AccentPink,
+                                selectedLabelColor = Color.White,
+                                containerColor = Color.White.copy(alpha = 0.2f),
+                                labelColor = Color.White
+                            ),
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
+                    }
                     // Toggle Player visibility
                     IconButton(onClick = { showPlayer = !showPlayer }) {
                         Icon(
@@ -160,7 +222,12 @@ fun MainScreen(
                     trackVolume = trackVolume,
                     synthVolume = synthVolume,
                     detectedKey = detectedKey,
+                    builtInTracks = trackPlayer.getBuiltInTracks(),
                     onSelectTrack = onSelectTrack,
+                    onSelectBuiltInTrack = { fileName ->
+                        trackPlayer.loadAssetTrack(fileName)
+                        onAnalyzeAssetTrack(fileName)
+                    },
                     onPlayPause = { trackPlayer.togglePlayPause() },
                     onStop = { trackPlayer.stop() },
                     onSeek = { trackPlayer.seekTo(it) },
@@ -187,6 +254,8 @@ fun MainScreen(
                     onRowCountSelected = { numRows = it },
                     waveType = waveType,
                     onWaveTypeSelected = { waveType = it },
+                    guitarParams = guitarParams,
+                    onGuitarParamsChanged = { guitarParams = it },
                     showNoteLabels = showNoteLabels,
                     onShowNoteLabelsChanged = { showNoteLabels = it },
                     modifier = Modifier
@@ -240,7 +309,9 @@ private fun TrackPlayerPanel(
     trackVolume: Float,
     synthVolume: Float,
     detectedKey: MusicalKey?,
+    builtInTracks: List<String>,
     onSelectTrack: () -> Unit,
+    onSelectBuiltInTrack: (String) -> Unit,
     onPlayPause: () -> Unit,
     onStop: () -> Unit,
     onSeek: (Long) -> Unit,
@@ -248,6 +319,8 @@ private fun TrackPlayerPanel(
     onSynthVolumeChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showTrackMenu by remember { mutableStateOf(false) }
+    
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
@@ -261,21 +334,87 @@ private fun TrackPlayerPanel(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Load Track Button
-            Button(
-                onClick = onSelectTrack,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentPink
-                ),
-                modifier = Modifier.height(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Carica Brano")
+            // Track Selection with Dropdown Menu
+            Box {
+                Button(
+                    onClick = { showTrackMenu = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentPink
+                    ),
+                    modifier = Modifier.height(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Brano")
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                
+                DropdownMenu(
+                    expanded = showTrackMenu,
+                    onDismissRequest = { showTrackMenu = false }
+                ) {
+                    // Built-in tracks section
+                    if (builtInTracks.isNotEmpty()) {
+                        Text(
+                            text = "🎵 Brani Inclusi",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = AccentPink,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        builtInTracks.forEach { track ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = track.removeSuffix(".mp3"),
+                                        fontSize = 14.sp
+                                    )
+                                },
+                                onClick = {
+                                    onSelectBuiltInTrack(track)
+                                    showTrackMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        tint = AccentPink
+                                    )
+                                }
+                            )
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    
+                    // Load from file option
+                    DropdownMenuItem(
+                        text = { 
+                            Text(
+                                text = "📁 Carica da File...",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp
+                            )
+                        },
+                        onClick = {
+                            onSelectTrack()
+                            showTrackMenu = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                }
             }
             
             // Track name or status
@@ -461,6 +600,8 @@ private fun SettingsPanel(
     onRowCountSelected: (Int) -> Unit,
     waveType: Int,
     onWaveTypeSelected: (Int) -> Unit,
+    guitarParams: GuitarParams,
+    onGuitarParamsChanged: (GuitarParams) -> Unit,
     showNoteLabels: Boolean,
     onShowNoteLabelsChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -487,16 +628,18 @@ private fun SettingsPanel(
         
         HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
         
-        // Wave Type
+        // Instrument Type
         Text(
-            text = "Tipo di Onda",
+            text = "🎹 Strumento",
             color = Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp
         )
         WaveTypeSelector(
             currentWaveType = waveType,
-            onWaveTypeSelected = onWaveTypeSelected
+            onWaveTypeSelected = onWaveTypeSelected,
+            guitarParams = guitarParams,
+            onGuitarParamsChanged = onGuitarParamsChanged
         )
         
         HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
@@ -527,6 +670,148 @@ private fun SettingsPanel(
                     checkedThumbColor = AccentPink,
                     checkedTrackColor = AccentPink.copy(alpha = 0.5f)
                 )
+            )
+        }
+    }
+}
+
+/**
+ * WahPedalControl - A custom Cry Baby wah pedal control
+ * Swipe left for heel (low freq), swipe right for toe (high freq)
+ * The pedal rocks back and forth following the finger movement
+ */
+@Composable
+fun WahPedalControl(
+    onPositionChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var pedalPosition by remember { mutableFloatStateOf(0.5f) } // 0 = heel, 1 = toe
+    var controlWidth by remember { mutableIntStateOf(0) }
+    
+    // Animated rotation for the pedal tilt effect
+    val pedalTilt by animateFloatAsState(
+        targetValue = (pedalPosition - 0.5f) * 20f, // -10 to +10 degrees
+        animationSpec = tween(durationMillis = 50),
+        label = "pedalTilt"
+    )
+    
+    Box(
+        modifier = modifier
+            .width(80.dp)
+            .height(40.dp)
+            .onSizeChanged { size -> controlWidth = size.width }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        // Set initial position based on tap location
+                        if (controlWidth > 0) {
+                            pedalPosition = (offset.x / controlWidth).coerceIn(0f, 1f)
+                            onPositionChange(pedalPosition)
+                        }
+                    },
+                    onDragEnd = { },
+                    onDragCancel = { },
+                    onHorizontalDrag = { change, _ ->
+                        change.consume()
+                        if (controlWidth > 0) {
+                            pedalPosition = (change.position.x / controlWidth).coerceIn(0f, 1f)
+                            onPositionChange(pedalPosition)
+                        }
+                    }
+                )
+            }
+            .clip(RoundedCornerShape(6.dp))
+            .shadow(4.dp, RoundedCornerShape(6.dp))
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF4A4A4A), // Dark gray top
+                        Color(0xFF2A2A2A), // Darker bottom
+                        Color(0xFF1A1A1A)  // Almost black
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        // Pedal body with tilt animation
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(2.dp)
+                .graphicsLayer {
+                    rotationZ = pedalTilt
+                }
+                .clip(RoundedCornerShape(4.dp))
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFF505050),
+                            Color(0xFF606060),
+                            Color(0xFF505050)
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Rubber grip lines on the pedal
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                repeat(5) {
+                    Box(
+                        modifier = Modifier
+                            .width(2.dp)
+                            .height(28.dp)
+                            .background(Color(0xFF3A3A3A))
+                    )
+                }
+            }
+            
+            // Position indicator dot
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(x = ((pedalPosition - 0.5f) * 50).dp)
+                    .size(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(AccentPink)
+            )
+        }
+        
+        // Chrome trim at top (hinge area)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(4.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFAAAAAA),
+                            Color(0xFF888888)
+                        )
+                    )
+                )
+        )
+        
+        // Labels
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 4.dp, vertical = 1.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "▼",
+                fontSize = 8.sp,
+                color = Color.White.copy(alpha = 0.6f)
+            )
+            Text(
+                text = "▲",
+                fontSize = 8.sp,
+                color = Color.White.copy(alpha = 0.6f)
             )
         }
     }

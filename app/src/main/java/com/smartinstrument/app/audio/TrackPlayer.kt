@@ -75,6 +75,31 @@ class TrackPlayer(private val context: Context) {
     }
     
     /**
+     * Load a track from assets folder
+     */
+    fun loadAssetTrack(assetFileName: String) {
+        exoPlayer?.let { player ->
+            val assetUri = Uri.parse("asset:///tracks/$assetFileName")
+            val mediaItem = MediaItem.fromUri(assetUri)
+            player.setMediaItem(mediaItem)
+            player.prepare()
+            _trackName.value = assetFileName.removeSuffix(".mp3")
+            _isTrackLoaded.value = false
+        }
+    }
+    
+    /**
+     * Get list of available built-in tracks
+     */
+    fun getBuiltInTracks(): List<String> {
+        return try {
+            context.assets.list("tracks")?.toList() ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    /**
      * Play the loaded track
      */
     fun play() {

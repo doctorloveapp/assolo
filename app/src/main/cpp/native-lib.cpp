@@ -103,7 +103,7 @@ Java_com_smartinstrument_app_audio_NativeAudioEngine_nativeSetMasterVolume(
 
 /**
  * Imposta il tipo di forma d'onda
- * @param waveType 0=Sine, 1=Sawtooth, 2=Square, 3=Triangle
+ * @param waveType 0=Sine(Hammond), 1=Sawtooth, 2=Square, 3=Triangle, 4=Guitar(Karplus-Strong)
  */
 JNIEXPORT void JNICALL
 Java_com_smartinstrument_app_audio_NativeAudioEngine_nativeSetWaveType(
@@ -123,6 +123,45 @@ Java_com_smartinstrument_app_audio_NativeAudioEngine_nativeSetPitchBend(
         JNIEnv *env, jobject thiz, jint voiceIndex, jfloat semitones) {
     if (audioEngine) {
         audioEngine->setPitchBend(voiceIndex, semitones);
+    }
+}
+
+/**
+ * Imposta i parametri della chitarra elettrica
+ * @param sustain 0.0-1.0 quanto dura la nota
+ * @param gain 0.0-1.0 volume/presenza
+ * @param distortion 0.0-1.0 quanto distorto
+ * @param reverb 0.0-1.0 quanto riverbero
+ */
+JNIEXPORT void JNICALL
+Java_com_smartinstrument_app_audio_NativeAudioEngine_nativeSetGuitarParams(
+        JNIEnv *env, jobject thiz, jfloat sustain, jfloat gain, jfloat distortion, jfloat reverb) {
+    if (audioEngine) {
+        audioEngine->setGuitarParams(sustain, gain, distortion, reverb);
+    }
+}
+
+/**
+ * Attiva/disattiva il Wah pedal (Dunlop Cry Baby)
+ * @param enabled true per attivare, false per disattivare
+ */
+JNIEXPORT void JNICALL
+Java_com_smartinstrument_app_audio_NativeAudioEngine_nativeSetWahEnabled(
+        JNIEnv *env, jobject thiz, jboolean enabled) {
+    if (audioEngine) {
+        audioEngine->setWahEnabled(enabled);
+    }
+}
+
+/**
+ * Imposta la posizione del Wah pedal (modalità manuale)
+ * @param position 0.0 = heel (basso), 1.0 = toe (acuto)
+ */
+JNIEXPORT void JNICALL
+Java_com_smartinstrument_app_audio_NativeAudioEngine_nativeSetWahPosition(
+        JNIEnv *env, jobject thiz, jfloat position) {
+    if (audioEngine) {
+        audioEngine->setWahPosition(position);
     }
 }
 

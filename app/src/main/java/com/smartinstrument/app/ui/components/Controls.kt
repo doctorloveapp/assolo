@@ -2,7 +2,9 @@ package com.smartinstrument.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -15,11 +17,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.smartinstrument.app.music.MusicalKey
 import com.smartinstrument.app.music.Note
 import com.smartinstrument.app.music.ScaleType
 import com.smartinstrument.app.ui.theme.AccentPink
 import com.smartinstrument.app.ui.theme.DarkSurface
+
+/**
+ * Data class per i parametri della chitarra
+ */
+data class GuitarParams(
+    val sustain: Float = 0.9f,
+    val gain: Float = 0.85f,
+    val distortion: Float = 0.8f,
+    val reverb: Float = 0.6f
+)
 
 /**
  * KeySelector - Dropdown component for selecting musical key
@@ -153,28 +166,43 @@ fun KeySelector(
 
 /**
  * WaveTypeSelector - Chips for selecting synthesizer wave type
+ * Double-tap on Guitar opens settings dialog
  */
 @Composable
 fun WaveTypeSelector(
     currentWaveType: Int,
     onWaveTypeSelected: (Int) -> Unit,
+    guitarParams: GuitarParams,
+    onGuitarParamsChanged: (GuitarParams) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showGuitarDialog by remember { mutableStateOf(false) }
+    
+    // Guitar first, then the other instruments
     val waveTypes = listOf(
-        0 to "Sine",
-        1 to "Saw",
-        2 to "Square",
-        3 to "Triangle"
+        4 to "⚡ Guitar",
+        0 to "🎹 Organ",
+        1 to "🎷 Synth",
+        2 to "⬛ Square",
+        3 to "🎸 Bass"
     )
     
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         waveTypes.forEach { (type, name) ->
             FilterChip(
                 selected = currentWaveType == type,
-                onClick = { onWaveTypeSelected(type) },
+                onClick = { 
+                    if (type == 4 && currentWaveType == 4) {
+                        // Double tap on Guitar - show settings
+                        showGuitarDialog = true
+                    } else {
+                        onWaveTypeSelected(type)
+                    }
+                },
                 label = { 
                     Text(
                         text = name,
@@ -187,6 +215,143 @@ fun WaveTypeSelector(
                 )
             )
         }
+    }
+    
+    // Guitar Settings Dialog
+    if (showGuitarDialog) {
+        GuitarSettingsDialog(
+            params = guitarParams,
+            onParamsChanged = onGuitarParamsChanged,
+            onDismiss = { showGuitarDialog = false }
+        )
+    }
+}
+
+/**
+ * Dialog per configurare i parametri della chitarra elettrica
+ */
+@Composable
+fun GuitarSettingsDialog(
+    params: GuitarParams,
+    onParamsChanged: (GuitarParams) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var sustain by remember { mutableFloatStateOf(params.sustain) }
+    var gain by remember { mutableFloatStateOf(params.gain) }
+    var distortion by remember { mutableFloatStateOf(params.distortion) }
+    var reverb by remember { mutableFloatStateOf(params.reverb) }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = DarkSurface,
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .width(280.dp)
+            ) {
+                Text(
+                    text = "⚡ Guitar Settings",
+                    color = AccentPink,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                // Sustain slider
+                GuitarSlider(
+                    label = "🎵 Sustain",
+                    value = sustain,
+                    onValueChange = { 
+                        sustain = it
+                        onParamsChanged(GuitarParams(sustain, gain, distortion, reverb))
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Gain slider
+                GuitarSlider(
+                    label = "📢 Gain",
+                    value = gain,
+                    onValueChange = { 
+                        gain = it
+                        onParamsChanged(GuitarParams(sustain, gain, distortion, reverb))
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Distortion slider
+                GuitarSlider(
+                    label = "🔥 Distortion",
+                    value = distortion,
+                    onValueChange = { 
+                        distortion = it
+                        onParamsChanged(GuitarParams(sustain, gain, distortion, reverb))
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Reverb slider
+                GuitarSlider(
+                    label = "🏛️ Reverb",
+                    value = reverb,
+                    onValueChange = { 
+                        reverb = it
+                        onParamsChanged(GuitarParams(sustain, gain, distortion, reverb))
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Close button
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentPink)
+                ) {
+                    Text("Done")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GuitarSlider(
+    label: String,
+    value: Float,
+    onValueChange: (Float) -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                color = Color.White,
+                fontSize = 14.sp
+            )
+            Text(
+                text = "${(value * 100).toInt()}%",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 14.sp
+            )
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            colors = SliderDefaults.colors(
+                thumbColor = AccentPink,
+                activeTrackColor = AccentPink,
+                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+            )
+        )
     }
 }
 

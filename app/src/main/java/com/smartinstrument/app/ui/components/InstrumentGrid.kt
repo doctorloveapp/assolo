@@ -349,7 +349,7 @@ private fun NoteRow(
                     
                     Text(
                         text = noteInfo.displayName,
-                        color = Color.White,
+                        color = if (noteInfo.isBlueNote) Color(0xFF64B5F6) else Color.White,
                         fontSize = 16.sp,
                         fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium
                     )

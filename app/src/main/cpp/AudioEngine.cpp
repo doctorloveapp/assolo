@@ -141,10 +141,11 @@ void AudioEngine::setWaveType(int type) {
     Oscillator::WaveType waveType;
     
     switch (type) {
-        case 0: waveType = Oscillator::WaveType::Sine; break;
-        case 1: waveType = Oscillator::WaveType::Sawtooth; break;
-        case 2: waveType = Oscillator::WaveType::Square; break;
-        case 3: waveType = Oscillator::WaveType::Triangle; break;
+        case 0: waveType = Oscillator::WaveType::Sine; break;     // Hammond B3
+        case 1: waveType = Oscillator::WaveType::Sawtooth; break; // Synth Lead
+        case 2: waveType = Oscillator::WaveType::Square; break;   // Retro
+        case 3: waveType = Oscillator::WaveType::Bass; break;     // Electric Bass
+        case 4: waveType = Oscillator::WaveType::Guitar; break;   // Electric Guitar
         default: waveType = Oscillator::WaveType::Sawtooth; break;
     }
     
@@ -154,6 +155,33 @@ void AudioEngine::setWaveType(int type) {
     }
     
     LOGI("Wave type set to: %d", type);
+}
+
+void AudioEngine::setGuitarParams(float sustain, float gain, float distortion, float reverb) {
+    std::lock_guard<std::mutex> lock(voiceMutex);
+    for (auto& voice : voices) {
+        voice.setGuitarSustain(sustain);
+        voice.setGuitarGain(gain);
+        voice.setGuitarDistortion(distortion);
+        voice.setGuitarReverb(reverb);
+    }
+    LOGI("Guitar params: sustain=%.2f, gain=%.2f, dist=%.2f, reverb=%.2f", 
+         sustain, gain, distortion, reverb);
+}
+
+void AudioEngine::setWahEnabled(bool enabled) {
+    std::lock_guard<std::mutex> lock(voiceMutex);
+    for (auto& voice : voices) {
+        voice.setWahEnabled(enabled);
+    }
+    LOGI("Wah pedal: %s", enabled ? "ON" : "OFF");
+}
+
+void AudioEngine::setWahPosition(float position) {
+    std::lock_guard<std::mutex> lock(voiceMutex);
+    for (auto& voice : voices) {
+        voice.setWahPosition(position);
+    }
 }
 
 oboe::DataCallbackResult AudioEngine::onAudioReady(

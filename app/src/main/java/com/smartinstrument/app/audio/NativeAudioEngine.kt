@@ -15,11 +15,12 @@ class NativeAudioEngine {
         
         const val MAX_VOICES = 8
         
-        // Tipi di forma d'onda
-        const val WAVE_SINE = 0
-        const val WAVE_SAWTOOTH = 1
-        const val WAVE_SQUARE = 2
-        const val WAVE_TRIANGLE = 3
+        // Tipi di strumento
+        const val WAVE_SINE = 0      // Hammond B3 organ
+        const val WAVE_SAWTOOTH = 1  // Synth lead
+        const val WAVE_SQUARE = 2    // Retro square
+        const val WAVE_BASS = 3      // Electric Bass with slap
+        const val WAVE_GUITAR = 4    // Electric Guitar with distortion
     }
     
     private var isCreated = false
@@ -130,6 +131,43 @@ class NativeAudioEngine {
         }
     }
     
+    /**
+     * Imposta i parametri della chitarra elettrica
+     * @param sustain 0.0-1.0 durata della nota
+     * @param gain 0.0-1.0 volume/presenza  
+     * @param distortion 0.0-1.0 quantità di distorsione
+     * @param reverb 0.0-1.0 quantità di riverbero
+     */
+    fun setGuitarParams(sustain: Float, gain: Float, distortion: Float, reverb: Float) {
+        if (isCreated) {
+            nativeSetGuitarParams(
+                sustain.coerceIn(0f, 1f),
+                gain.coerceIn(0f, 1f),
+                distortion.coerceIn(0f, 1f),
+                reverb.coerceIn(0f, 1f)
+            )
+        }
+    }
+    
+    /**
+     * Attiva/disattiva il Wah pedal (Dunlop Cry Baby)
+     */
+    fun setWahEnabled(enabled: Boolean) {
+        if (isCreated) {
+            nativeSetWahEnabled(enabled)
+        }
+    }
+    
+    /**
+     * Imposta la posizione del Wah pedal (modalità manuale)
+     * @param position 0.0 = heel (suono basso), 1.0 = toe (suono acuto)
+     */
+    fun setWahPosition(position: Float) {
+        if (isCreated) {
+            nativeSetWahPosition(position.coerceIn(0f, 1f))
+        }
+    }
+    
     // Metodi JNI nativi
     private external fun nativeCreate(): Boolean
     private external fun nativeStart(): Boolean
@@ -141,4 +179,7 @@ class NativeAudioEngine {
     private external fun nativeSetMasterVolume(volume: Float)
     private external fun nativeSetWaveType(waveType: Int)
     private external fun nativeSetPitchBend(voiceIndex: Int, semitones: Float)
+    private external fun nativeSetGuitarParams(sustain: Float, gain: Float, distortion: Float, reverb: Float)
+    private external fun nativeSetWahEnabled(enabled: Boolean)
+    private external fun nativeSetWahPosition(position: Float)
 }
