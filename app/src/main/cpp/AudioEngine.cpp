@@ -57,8 +57,7 @@ bool AudioEngine::openStream() {
            ->setSampleRate(sampleRate)
            ->setCallback(this);
     
-    // Prova a ottenere il buffer più piccolo possibile per minima latenza
-    builder.setFramesPerBuffer(oboe::kUnspecified);
+    // LowLatency gestisce automaticamente il buffer ottimale
     
     oboe::Result result = builder.openStream(stream);
     
@@ -69,9 +68,9 @@ bool AudioEngine::openStream() {
     
     // Ottieni i parametri effettivi dello stream
     sampleRate = stream->getSampleRate();
-    framesPerBuffer = stream->getFramesPerBuffer();
+    framesPerBuffer = stream->getFramesPerBurst();
     
-    LOGI("Stream opened: sampleRate=%d, framesPerBuffer=%d, latency=%d ms",
+    LOGI("Stream opened: sampleRate=%d, framesPerBurst=%d, latency=%d ms",
          sampleRate, framesPerBuffer,
          (framesPerBuffer * 1000) / sampleRate);
     
@@ -124,6 +123,15 @@ void AudioEngine::allNotesOff() {
     LOGI("All notes OFF");
 }
 
+void AudioEngine::setPitchBend(int voiceIndex, float semitones) {
+    if (voiceIndex < 0 || voiceIndex >= MAX_VOICES) {
+        return;
+    }
+    
+    std::lock_guard<std::mutex> lock(voiceMutex);
+    voices[voiceIndex].setPitchBend(semitones);
+}
+
 void AudioEngine::setMasterVolume(float volume) {
     masterVolume = std::clamp(volume, 0.0f, 1.0f);
     LOGI("Master volume set to: %.2f", masterVolume);
@@ -171,9 +179,10 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
         }
     }
     
-    // Applica master volume e limita per evitare clipping
+    // Applica master volume con attenuazione base (synth troppo forte rispetto alle basi)
+    const float synthAttenuation = 0.25f;  // Riduce il volume massimo del synth
     for (int i = 0; i < numFrames; ++i) {
-        outputBuffer[i] *= masterVolume;
+        outputBuffer[i] *= masterVolume * synthAttenuation;
         // Soft clipping per evitare distorsione
         outputBuffer[i] = std::clamp(outputBuffer[i], -1.0f, 1.0f);
     }

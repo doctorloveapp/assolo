@@ -22,6 +22,7 @@ public:
     void setFrequency(float frequency);
     void setWaveType(WaveType type);
     void setAmplitude(float amplitude);
+    void setPitchBend(float semitones);  // Pitch bend in semitones (-2 to +2)
     
     void noteOn(float frequency);
     void noteOff();
@@ -38,6 +39,8 @@ private:
     
     float sampleRate = 48000.0f;
     float frequency = 440.0f;
+    float baseFrequency = 440.0f;  // Frequency without pitch bend
+    float pitchBendSemitones = 0.0f;  // Current pitch bend amount
     float phase = 0.0f;
     float phaseIncrement = 0.0f;
     float amplitude = 0.8f;

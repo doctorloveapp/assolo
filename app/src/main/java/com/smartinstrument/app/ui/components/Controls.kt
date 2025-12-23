@@ -238,7 +238,7 @@ fun RowCountSelector(
     onCountSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val options = listOf(5, 7, 10, 12)
+    val options = listOf(10, 15, 18)  // Blues scale options
     
     Row(
         modifier = modifier,

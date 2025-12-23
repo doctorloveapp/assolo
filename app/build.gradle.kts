@@ -83,8 +83,8 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     
-    // TarsosDSP per analisi tonalità
-    implementation(libs.tarsosdsp.android)
+    // TarsosDSP per analisi tonalità (pitch detection, key detection)
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     
     // Oboe per audio a bassa latenza (via prefab)
     implementation("com.google.oboe:oboe:1.9.0")

@@ -27,3 +27,6 @@ val GridRowColors = listOf(
     Color(0xFF6BCB77),
     Color(0xFF4D96FF)  // Note molto acute - Blu
 )
+
+// Colore speciale per le Blue Notes (grigio chiaro - ben distinguibile)
+val BlueNoteColor = Color(0xFF9E9E9E)  // Grigio

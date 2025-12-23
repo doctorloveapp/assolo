@@ -119,6 +119,17 @@ class NativeAudioEngine {
         }
     }
     
+    /**
+     * Imposta il pitch bend per una voce (bending della nota)
+     * @param voiceIndex Indice della voce
+     * @param semitones Quantità di bend in semitoni (tipicamente -2 a +2)
+     */
+    fun setPitchBend(voiceIndex: Int, semitones: Float) {
+        if (isStarted && voiceIndex in 0 until MAX_VOICES) {
+            nativeSetPitchBend(voiceIndex, semitones)
+        }
+    }
+    
     // Metodi JNI nativi
     private external fun nativeCreate(): Boolean
     private external fun nativeStart(): Boolean
@@ -129,4 +140,5 @@ class NativeAudioEngine {
     private external fun nativeAllNotesOff()
     private external fun nativeSetMasterVolume(volume: Float)
     private external fun nativeSetWaveType(waveType: Int)
+    private external fun nativeSetPitchBend(voiceIndex: Int, semitones: Float)
 }

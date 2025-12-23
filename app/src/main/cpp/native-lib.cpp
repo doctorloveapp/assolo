@@ -113,4 +113,17 @@ Java_com_smartinstrument_app_audio_NativeAudioEngine_nativeSetWaveType(
     }
 }
 
+/**
+ * Imposta il pitch bend per una voce
+ * @param voiceIndex Indice della voce (0-7)
+ * @param semitones Quantità di bend in semitoni (-2 a +2 tipicamente)
+ */
+JNIEXPORT void JNICALL
+Java_com_smartinstrument_app_audio_NativeAudioEngine_nativeSetPitchBend(
+        JNIEnv *env, jobject thiz, jint voiceIndex, jfloat semitones) {
+    if (audioEngine) {
+        audioEngine->setPitchBend(voiceIndex, semitones);
+    }
+}
+
 } // extern "C"

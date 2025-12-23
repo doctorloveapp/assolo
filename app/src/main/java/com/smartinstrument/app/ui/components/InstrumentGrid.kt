@@ -5,13 +5,11 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.*
@@ -22,114 +20,227 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.smartinstrument.app.music.NoteInfo
+import com.smartinstrument.app.ui.theme.BlueNoteColor
 import com.smartinstrument.app.ui.theme.GridRowColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.sin
 
 /**
- * InstrumentGrid - The main playable instrument interface
+ * InstrumentGrid - The main playable instrument interface with pitch bend and vibrato
  * 
- * A grid of horizontal rows where each row represents a note in the pentatonic scale.
- * Supports multitouch for playing chords. Optimized for lowest possible latency.
+ * A grid of horizontal rows where each row represents a note in the blues scale.
+ * Supports multitouch for playing chords, horizontal drag for pitch bending,
+ * and automatic vibrato after holding a note for 1 second.
  */
 @Composable
 fun InstrumentGrid(
     notes: List<NoteInfo>,
     onNoteOn: (voiceIndex: Int, frequency: Float) -> Unit,
     onNoteOff: (voiceIndex: Int) -> Unit,
+    onPitchBend: (voiceIndex: Int, semitones: Float) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     showNoteLabels: Boolean = true
 ) {
     var gridSize by remember { mutableStateOf(IntSize.Zero) }
+    val coroutineScope = rememberCoroutineScope()
     
-    // Track active touches: pointerId -> rowIndex
-    val activeTouches = remember { mutableStateMapOf<Long, Int>() }
+    // Track active touches: pointerId -> TouchState
+    data class TouchState(
+        val rowIndex: Int,
+        val voiceIndex: Int,
+        val startX: Float,
+        val startTime: Long,
+        val currentBend: Float = 0f,
+        val isVibrating: Boolean = false,
+        val manualBend: Float = 0f  // Bend from finger movement
+    )
     
-    // Map pointer IDs to voice indices (0-7)
-    val pointerToVoice = remember { mutableStateMapOf<Long, Int>() }
+    // Use key to force recomposition when notes change - fixes tap mismatch bug
+    val notesKey = remember(notes) { notes.hashCode() }
+    
+    val activeTouches = remember(notesKey) { mutableStateMapOf<Long, TouchState>() }
     var nextVoiceIndex by remember { mutableIntStateOf(0) }
     
-    // Calculate row height
-    val rowHeight = if (notes.isNotEmpty() && gridSize.height > 0) {
-        gridSize.height.toFloat() / notes.size
-    } else 0f
+    // Vibrato state for each voice
+    val vibratoPhases = remember { mutableStateMapOf<Int, Float>() }
+    
+    // Calculate row height - recalculate when notes or grid size changes
+    val rowHeight by remember(notes.size, gridSize.height) {
+        derivedStateOf {
+            if (notes.isNotEmpty() && gridSize.height > 0) {
+                gridSize.height.toFloat() / notes.size
+            } else 0f
+        }
+    }
+    
+    // Bend sensitivity
+    val bendSensitivity by remember(gridSize.width) {
+        derivedStateOf {
+            if (gridSize.width > 0) 8f / gridSize.width else 0f
+        }
+    }
+    
+    // Vibrato effect - runs continuously for active vibrating notes
+    LaunchedEffect(activeTouches.keys.toSet()) {
+        while (activeTouches.isNotEmpty()) {
+            val currentTime = System.currentTimeMillis()
+            
+            activeTouches.forEach { (pointerId, state) ->
+                val holdDuration = currentTime - state.startTime
+                
+                // Start vibrato after 700ms of holding
+                if (holdDuration > 700 && !state.isVibrating) {
+                    activeTouches[pointerId] = state.copy(isVibrating = true)
+                }
+                
+                // Apply vibrato if active
+                if (state.isVibrating) {
+                    val phase = (vibratoPhases[state.voiceIndex] ?: 0f) + 0.405f  // 35% faster
+                    vibratoPhases[state.voiceIndex] = phase
+                    
+                    // Vibrato: oscillates ±0.3 semitones at ~8Hz
+                    val vibratoBend = sin(phase.toDouble()).toFloat() * 0.3f
+                    val totalBend = (state.manualBend + vibratoBend).coerceIn(0f, 2.5f)
+                    
+                    if (kotlin.math.abs(totalBend - state.currentBend) > 0.02f) {
+                        activeTouches[pointerId] = state.copy(currentBend = totalBend)
+                        onPitchBend(state.voiceIndex, totalBend)
+                    }
+                }
+            }
+            
+            delay(16) // ~60fps for smooth vibrato
+        }
+    }
     
     Box(
         modifier = modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(16.dp))
             .onSizeChanged { gridSize = it }
-            .pointerInput(notes) {
+            .pointerInput(notesKey, gridSize) {  // Key on notes AND gridSize to reset on changes
                 awaitEachGesture {
-                    // Wait for first touch
                     val firstDown = awaitFirstDown(requireUnconsumed = false)
+                    val currentRowHeight = rowHeight
                     
-                    // Handle first touch immediately for zero latency
-                    handleTouchDown(
-                        pointerId = firstDown.id.value,
-                        position = firstDown.position,
-                        rowHeight = rowHeight,
-                        notes = notes,
-                        activeTouches = activeTouches,
-                        pointerToVoice = pointerToVoice,
-                        nextVoiceIndex = nextVoiceIndex,
-                        onNoteOn = onNoteOn,
-                        onVoiceAssigned = { nextVoiceIndex = (nextVoiceIndex + 1) % 8 }
-                    )
+                    // Handle first touch
+                    if (currentRowHeight > 0 && notes.isNotEmpty()) {
+                        val touchedRow = ((notes.size - 1) - (firstDown.position.y / currentRowHeight).toInt())
+                            .coerceIn(0, notes.lastIndex)
+                        
+                        val voiceIndex = nextVoiceIndex
+                        nextVoiceIndex = (nextVoiceIndex + 1) % 8
+                        
+                        activeTouches[firstDown.id.value] = TouchState(
+                            rowIndex = touchedRow,
+                            voiceIndex = voiceIndex,
+                            startX = firstDown.position.x,
+                            startTime = System.currentTimeMillis()
+                        )
+                        
+                        vibratoPhases[voiceIndex] = 0f
+                        onNoteOn(voiceIndex, notes[touchedRow].frequency)
+                    }
                     
                     // Continue tracking all pointers
                     do {
                         val event = awaitPointerEvent()
+                        val currentRowHeightInLoop = rowHeight
                         
                         event.changes.forEach { change ->
+                            val pointerId = change.id.value
+                            
                             when {
+                                // New touch down
                                 change.pressed && !change.previousPressed -> {
-                                    // New touch down
-                                    handleTouchDown(
-                                        pointerId = change.id.value,
-                                        position = change.position,
-                                        rowHeight = rowHeight,
-                                        notes = notes,
-                                        activeTouches = activeTouches,
-                                        pointerToVoice = pointerToVoice,
-                                        nextVoiceIndex = nextVoiceIndex,
-                                        onNoteOn = onNoteOn,
-                                        onVoiceAssigned = { nextVoiceIndex = (nextVoiceIndex + 1) % 8 }
-                                    )
+                                    if (currentRowHeightInLoop > 0 && notes.isNotEmpty()) {
+                                        val touchedRow = ((notes.size - 1) - (change.position.y / currentRowHeightInLoop).toInt())
+                                            .coerceIn(0, notes.lastIndex)
+                                        
+                                        val voiceIndex = nextVoiceIndex
+                                        nextVoiceIndex = (nextVoiceIndex + 1) % 8
+                                        
+                                        activeTouches[pointerId] = TouchState(
+                                            rowIndex = touchedRow,
+                                            voiceIndex = voiceIndex,
+                                            startX = change.position.x,
+                                            startTime = System.currentTimeMillis()
+                                        )
+                                        
+                                        vibratoPhases[voiceIndex] = 0f
+                                        onNoteOn(voiceIndex, notes[touchedRow].frequency)
+                                    }
                                 }
+                                
+                                // Touch up
                                 !change.pressed && change.previousPressed -> {
-                                    // Touch up
-                                    handleTouchUp(
-                                        pointerId = change.id.value,
-                                        activeTouches = activeTouches,
-                                        pointerToVoice = pointerToVoice,
-                                        onNoteOff = onNoteOff
-                                    )
+                                    activeTouches[pointerId]?.let { state ->
+                                        onPitchBend(state.voiceIndex, 0f)
+                                        onNoteOff(state.voiceIndex)
+                                        vibratoPhases.remove(state.voiceIndex)
+                                    }
+                                    activeTouches.remove(pointerId)
                                 }
+                                
+                                // Touch move - handle pitch bend
                                 change.pressed -> {
-                                    // Touch move - check if crossed to different row
-                                    handleTouchMove(
-                                        pointerId = change.id.value,
-                                        position = change.position,
-                                        rowHeight = rowHeight,
-                                        notes = notes,
-                                        activeTouches = activeTouches,
-                                        pointerToVoice = pointerToVoice,
-                                        onNoteOn = onNoteOn,
-                                        onNoteOff = onNoteOff
-                                    )
+                                    activeTouches[pointerId]?.let { state ->
+                                        val currentBendSensitivity = bendSensitivity
+                                        
+                                        // Calculate horizontal displacement for bend (always positive)
+                                        val deltaX = kotlin.math.abs(change.position.x - state.startX)
+                                        val manualBend = (deltaX * currentBendSensitivity).coerceIn(0f, 2f)
+                                        
+                                        // If manually bending, stop auto-vibrato
+                                        val isManuallyBending = manualBend > 0.2f
+                                        
+                                        if (isManuallyBending) {
+                                            // Manual bend takes over
+                                            if (kotlin.math.abs(manualBend - state.manualBend) > 0.05f) {
+                                                activeTouches[pointerId] = state.copy(
+                                                    manualBend = manualBend,
+                                                    currentBend = manualBend,
+                                                    isVibrating = false
+                                                )
+                                                onPitchBend(state.voiceIndex, manualBend)
+                                            }
+                                        } else if (!state.isVibrating) {
+                                            // Not bending and not vibrating yet
+                                            activeTouches[pointerId] = state.copy(manualBend = 0f)
+                                        }
+                                        
+                                        // Check if moved to a different row (vertical movement)
+                                        val currentRow = ((notes.size - 1) - (change.position.y / currentRowHeightInLoop).toInt())
+                                            .coerceIn(0, notes.lastIndex)
+                                        
+                                        if (currentRow != state.rowIndex) {
+                                            // Reset bend and switch note
+                                            onPitchBend(state.voiceIndex, 0f)
+                                            activeTouches[pointerId] = TouchState(
+                                                rowIndex = currentRow,
+                                                voiceIndex = state.voiceIndex,
+                                                startX = change.position.x,
+                                                startTime = System.currentTimeMillis()  // Reset timer on row change
+                                            )
+                                            vibratoPhases[state.voiceIndex] = 0f
+                                            onNoteOn(state.voiceIndex, notes[currentRow].frequency)
+                                        }
+                                    }
                                 }
                             }
                             change.consume()
                         }
                     } while (event.changes.any { it.pressed })
                     
-                    // All touches released
+                    // All touches released - clean up
                     activeTouches.keys.toList().forEach { pointerId ->
-                        handleTouchUp(
-                            pointerId = pointerId,
-                            activeTouches = activeTouches,
-                            pointerToVoice = pointerToVoice,
-                            onNoteOff = onNoteOff
-                        )
+                        activeTouches[pointerId]?.let { state ->
+                            onPitchBend(state.voiceIndex, 0f)
+                            onNoteOff(state.voiceIndex)
+                            vibratoPhases.remove(state.voiceIndex)
+                        }
+                        activeTouches.remove(pointerId)
                     }
                 }
             }
@@ -138,13 +249,18 @@ fun InstrumentGrid(
         Column(modifier = Modifier.fillMaxSize()) {
             notes.reversed().forEachIndexed { visualIndex, noteInfo ->
                 val actualIndex = notes.size - 1 - visualIndex
-                val isActive = activeTouches.values.contains(actualIndex)
+                val touchState = activeTouches.values.find { it.rowIndex == actualIndex }
+                val isActive = touchState != null
+                val currentBend = touchState?.currentBend ?: 0f
+                val isVibrating = touchState?.isVibrating ?: false
                 
                 NoteRow(
                     noteInfo = noteInfo,
                     rowIndex = actualIndex,
                     totalRows = notes.size,
                     isActive = isActive,
+                    pitchBend = currentBend,
+                    isVibrating = isVibrating,
                     showLabel = showNoteLabels,
                     modifier = Modifier
                         .weight(1f)
@@ -164,6 +280,8 @@ private fun NoteRow(
     rowIndex: Int,
     totalRows: Int,
     isActive: Boolean,
+    pitchBend: Float,
+    isVibrating: Boolean,
     showLabel: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -171,24 +289,40 @@ private fun NoteRow(
     val colorIndex = (rowIndex * (GridRowColors.size - 1)) / (totalRows - 1).coerceAtLeast(1)
     val baseColor = GridRowColors.getOrElse(colorIndex) { GridRowColors.first() }
     
+    // Blue notes get a completely distinct gold color
+    val noteColor = if (noteInfo.isBlueNote) {
+        BlueNoteColor
+    } else baseColor
+    
     // Active state makes the row brighter
     val rowColor = if (isActive) {
-        baseColor.copy(alpha = 1f)
+        noteColor.copy(alpha = 1f)
     } else {
-        baseColor.copy(alpha = 0.6f)
+        noteColor.copy(alpha = 0.6f)
     }
+    
+    // Shift color based on pitch bend for visual feedback
+    val bendIntensity = pitchBend / 2f
+    val bendColor = if (isActive && bendIntensity > 0.05f) {
+        Color(
+            red = (rowColor.red + (1f - rowColor.red) * bendIntensity).coerceIn(0f, 1f),
+            green = (rowColor.green * (1f - bendIntensity * 0.5f)).coerceIn(0f, 1f),
+            blue = (rowColor.blue * (1f - bendIntensity * 0.7f)).coerceIn(0f, 1f),
+            alpha = rowColor.alpha
+        )
+    } else rowColor
     
     val gradientBrush = Brush.horizontalGradient(
         colors = listOf(
-            rowColor.copy(alpha = if (isActive) 0.9f else 0.4f),
-            rowColor,
-            rowColor.copy(alpha = if (isActive) 0.9f else 0.4f)
+            bendColor.copy(alpha = if (isActive) 0.9f else 0.4f),
+            bendColor,
+            bendColor.copy(alpha = if (isActive) 0.9f else 0.4f)
         )
     )
     
     Box(
         modifier = modifier
-            .padding(vertical = 2.dp, horizontal = 4.dp)
+            .padding(vertical = 1.dp, horizontal = 4.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(gradientBrush),
         contentAlignment = Alignment.CenterStart
@@ -197,23 +331,53 @@ private fun NoteRow(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Note name
-                Text(
-                    text = noteInfo.displayName,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium
-                )
+                // Note name with indicators
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Blue note indicator
+                    if (noteInfo.isBlueNote) {
+                        Text(
+                            text = "♭",
+                            color = Color(0xFF64B5F6),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    
+                    Text(
+                        text = noteInfo.displayName,
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium
+                    )
+                    
+                    // Show vibrato indicator
+                    if (isActive && isVibrating) {
+                        Text(
+                            text = " ∿",  // Vibrato wave symbol
+                            color = Color.Yellow,
+                            fontSize = 14.sp
+                        )
+                    }
+                    
+                    // Show bend indicator
+                    if (isActive && pitchBend > 0.1f && !isVibrating) {
+                        Text(
+                            text = " ↗ +${"%.1f".format(pitchBend)}",
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
                 
-                // Frequency (smaller, right side)
+                // Frequency
                 Text(
                     text = noteInfo.frequencyDisplay,
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 12.sp
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 11.sp
                 )
             }
         }
@@ -223,83 +387,8 @@ private fun NoteRow(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.White.copy(alpha = 0.2f))
+                    .background(Color.White.copy(alpha = 0.15f))
             )
         }
-    }
-}
-
-// Helper functions for touch handling
-
-private fun handleTouchDown(
-    pointerId: Long,
-    position: Offset,
-    rowHeight: Float,
-    notes: List<NoteInfo>,
-    activeTouches: MutableMap<Long, Int>,
-    pointerToVoice: MutableMap<Long, Int>,
-    nextVoiceIndex: Int,
-    onNoteOn: (voiceIndex: Int, frequency: Float) -> Unit,
-    onVoiceAssigned: () -> Unit
-) {
-    if (rowHeight <= 0 || notes.isEmpty()) return
-    
-    // Calculate which row was touched (inverted because bass is at bottom)
-    val touchedRow = ((notes.size - 1) - (position.y / rowHeight).toInt())
-        .coerceIn(0, notes.lastIndex)
-    
-    // Assign a voice to this pointer
-    val voiceIndex = nextVoiceIndex
-    pointerToVoice[pointerId] = voiceIndex
-    activeTouches[pointerId] = touchedRow
-    
-    // Trigger the note
-    val noteInfo = notes[touchedRow]
-    onNoteOn(voiceIndex, noteInfo.frequency)
-    onVoiceAssigned()
-}
-
-private fun handleTouchUp(
-    pointerId: Long,
-    activeTouches: MutableMap<Long, Int>,
-    pointerToVoice: MutableMap<Long, Int>,
-    onNoteOff: (voiceIndex: Int) -> Unit
-) {
-    val voiceIndex = pointerToVoice[pointerId] ?: return
-    
-    // Release the note
-    onNoteOff(voiceIndex)
-    
-    // Clean up
-    activeTouches.remove(pointerId)
-    pointerToVoice.remove(pointerId)
-}
-
-private fun handleTouchMove(
-    pointerId: Long,
-    position: Offset,
-    rowHeight: Float,
-    notes: List<NoteInfo>,
-    activeTouches: MutableMap<Long, Int>,
-    pointerToVoice: MutableMap<Long, Int>,
-    onNoteOn: (voiceIndex: Int, frequency: Float) -> Unit,
-    onNoteOff: (voiceIndex: Int) -> Unit
-) {
-    if (rowHeight <= 0 || notes.isEmpty()) return
-    
-    val previousRow = activeTouches[pointerId] ?: return
-    val voiceIndex = pointerToVoice[pointerId] ?: return
-    
-    // Calculate current row
-    val currentRow = ((notes.size - 1) - (position.y / rowHeight).toInt())
-        .coerceIn(0, notes.lastIndex)
-    
-    // If moved to a different row, update the note
-    if (currentRow != previousRow) {
-        activeTouches[pointerId] = currentRow
-        
-        // Note off for old note, note on for new note (same voice for glide effect)
-        val newNoteInfo = notes[currentRow]
-        onNoteOn(voiceIndex, newNoteInfo.frequency)
     }
 }

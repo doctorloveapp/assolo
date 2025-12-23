@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.0.3-E94560?style=flat&logo=semantic-release&logoColor=white" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.0.5-E94560?style=flat&logo=semantic-release&logoColor=white" alt="Version">
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=flat&logo=android&logoColor=white" alt="Platform">
   <img src="https://img.shields.io/badge/Min%20SDK-26-blue?style=flat" alt="Min SDK">
   <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=flat&logo=kotlin&logoColor=white" alt="Language">
@@ -48,6 +48,12 @@ Whether you're a professional musician looking for a portable practice tool, a b
 - **Configurable Layout**: Choose between 5, 7, 10, or 12 rows for different playing styles
 - **Visual Note Labels**: Optional display of note names and frequencies for learning
 
+### 🎸 Pitch Bend (Guitar-Style)
+- **Horizontal Drag**: Slide finger left or right while holding a note to bend the pitch
+- **Guitar Feel**: Pitch always bends upward (like pulling a guitar string)
+- **Visual Feedback**: Note turns orange/red with ↗ indicator showing bend amount
+- **Range**: Up to 2 semitones (one whole tone) of bend
+
 ### ⚡ Ultra-Low Latency Audio
 - **Native C++ Audio Engine**: Built with Google's [Oboe](https://github.com/google/oboe) library for professional-grade audio performance
 - **Sub-10ms Latency**: Optimized for real-time performance with minimal perceptible delay
@@ -59,14 +65,16 @@ Whether you're a professional musician looking for a portable practice tool, a b
 - **Master Volume**: Fine-grained control over output levels
 
 ### 🎼 Musical Intelligence
+- **Automatic Key Detection**: Fast async analysis using MediaCodec decoding + **bass-focused autocorrelation** (low-pass filter isolates bass frequencies where the root note is most prominent) + Krumhansl-Schmuckler key profiles
+- **High Accuracy**: Correctly identifies root notes by analyzing bass frequencies (40-300 Hz) instead of full spectrum, avoiding harmonic confusion
 - **Manual Key Selection**: Choose from all 12 root notes (C through B) with Major/Minor modes
-- **Key Detection** *(Coming Soon)*: Automatic key detection from loaded audio files using TarsosDSP
-- **Scale Theory**: Proper music theory implementation for accurate note mapping
+- **Blues Scale**: Full blues scale with "blue notes" (♭5 for minor, ♭3 for major) highlighted in gold
 
-### 🎧 Backing Track Support *(Coming Soon)*
-- **Audio File Loading**: Import MP3/WAV files via Storage Access Framework
-- **ExoPlayer Integration**: Professional playback with transport controls
-- **Mix Control**: Independent volume for backing track and instrument
+### 🎧 Backing Track Player
+- **Audio File Loading**: Import MP3/WAV/AAC files via Storage Access Framework
+- **ExoPlayer Integration**: Professional playback with play/pause, stop, and seek controls
+- **Mix Control**: Independent volume sliders for backing track and synthesizer
+- **Collapsible Player**: Hide the player panel for more screen space during performance
 
 ---
 
@@ -103,9 +111,11 @@ By constraining the instrument to only display pentatonic notes matching the bac
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌─────────────┐
 │ Touch Event │ ──▶ │ Kotlin/JNI   │ ──▶ │ C++ Oboe    │ ──▶ │ Audio Out   │
-│ (ACTION_DOWN)│     │ Bridge       │     │ Oscillator  │     │ (Speaker)   │
+│ (DOWN/MOVE) │     │ Bridge       │     │ Oscillator  │     │ (Speaker)   │
 └─────────────┘     └──────────────┘     └─────────────┘     └─────────────┘
       ~1ms                ~0.5ms              ~8ms               Real-time
+      
+      Vertical: Note Selection    Horizontal: Pitch Bend (±2 semitones)
 ```
 
 ---
@@ -117,6 +127,8 @@ By constraining the instrument to only display pentatonic notes matching the bac
 ```
 Assolo/                                   # Project root
 ├── app/
+│   ├── libs/                             # Local JAR dependencies
+│   │   └── TarsosDSP-latest.jar          # Audio analysis library
 │   ├── src/main/
 │   │   ├── cpp/                          # Native C++ audio engine
 │   │   │   ├── CMakeLists.txt            # CMake build configuration
@@ -128,7 +140,9 @@ Assolo/                                   # Project root
 │   │   ├── java/com/smartinstrument/app/
 │   │   │   ├── MainActivity.kt           # Main activity entry point
 │   │   │   ├── audio/
-│   │   │   │   └── NativeAudioEngine.kt  # Kotlin wrapper for JNI calls
+│   │   │   │   ├── NativeAudioEngine.kt  # Kotlin wrapper for JNI calls
+│   │   │   │   ├── TrackPlayer.kt        # ExoPlayer wrapper for backing tracks
+│   │   │   │   └── KeyDetector.kt        # Bass-focused pitch detection + key analysis
 │   │   │   ├── music/
 │   │   │   │   ├── MusicalKey.kt         # Key/Scale data models
 │   │   │   │   └── PentatonicScale.kt    # Scale generation logic
@@ -170,7 +184,7 @@ Assolo/                                   # Project root
 |-------|------------|---------|
 | **UI** | Jetpack Compose | Declarative, reactive UI framework |
 | **Audio Engine** | Oboe (C++) | Low-latency audio I/O |
-| **Audio Analysis** | TarsosDSP | Key detection algorithms |
+| **Key Detection** | Bass-focused Autocorrelation | Pitch detection with low-pass filter + Krumhansl-Schmuckler profiles |
 | **Playback** | Media3 ExoPlayer | Backing track playback |
 | **Build** | Gradle + CMake | Kotlin/C++ multi-platform build |
 
@@ -256,24 +270,29 @@ The native audio engine is built for maximum performance:
 
 ## 🗺️ Roadmap
 
-### Version 1.0 (Current)
+### Version 1.0 ✅
 - [x] Low-latency audio engine with Oboe
 - [x] Pentatonic scale grid UI
 - [x] Multitouch support (8-voice polyphony)
 - [x] Manual key selection
 - [x] Multiple waveform types
 
-### Version 1.1 (Planned)
-- [ ] Audio file loading (SAF)
-- [ ] ExoPlayer integration for backing tracks
-- [ ] Independent volume controls
+### Version 2.0 ✅ (Current)
+- [x] Audio file loading (SAF)
+- [x] ExoPlayer integration for backing tracks
+- [x] Independent volume controls (synth + track)
+- [x] Automatic key detection (bass-focused algorithm for high accuracy)
+- [x] Collapsible player panel
+- [x] **Pitch Bend** - Guitar-style note bending with horizontal drag
+- [x] **Vibrato** - Automatic vibrato after 700ms hold
+- [x] **Blues Scale** - Blue notes (♭5/♭3) with distinct gold color
 
-### Version 1.2 (Planned)
-- [ ] Automatic key detection (TarsosDSP)
+### Version 2.1 (Planned)
 - [ ] Loop markers for backing tracks
 - [ ] Chord detection display
+- [ ] Scale selection (pentatonic, blues, modes)
 
-### Version 2.0 (Future)
+### Version 3.0 (Future)
 - [ ] MIDI output support
 - [ ] Custom scale editor
 - [ ] Recording and export

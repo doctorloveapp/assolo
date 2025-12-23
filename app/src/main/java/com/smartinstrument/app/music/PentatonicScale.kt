@@ -3,31 +3,36 @@ package com.smartinstrument.app.music
 import kotlin.math.pow
 
 /**
- * PentatonicScale - Generates pentatonic scale frequencies for a given key
+ * PentatonicScale - Generates blues scale frequencies for a given key
  * 
- * The pentatonic scale is a 5-note scale that sounds good over most chord progressions.
- * It's the safest scale for improvisation because it avoids dissonant intervals.
+ * The blues scale is a pentatonic scale with added "blue notes" - 
+ * chromatic notes that add tension and expressiveness.
  * 
- * Major Pentatonic: 1, 2, 3, 5, 6 (intervals: 0, 2, 4, 7, 9 semitones)
- * Minor Pentatonic: 1, b3, 4, 5, b7 (intervals: 0, 3, 5, 7, 10 semitones)
+ * Major Blues: 1, 2, b3, 3, 5, 6 (intervals: 0, 2, 3, 4, 7, 9 semitones)
+ * Minor Blues: 1, b3, 4, b5, 5, b7 (intervals: 0, 3, 5, 6, 7, 10 semitones)
+ * 
+ * The b5 (flatted fifth) is the classic "blue note" that gives blues its characteristic sound.
  */
 object PentatonicScale {
     
-    // Semitone intervals from root for each scale type
-    private val MAJOR_PENTATONIC_INTERVALS = intArrayOf(0, 2, 4, 7, 9)
-    private val MINOR_PENTATONIC_INTERVALS = intArrayOf(0, 3, 5, 7, 10)
+    // Blues scale intervals (pentatonic + blue notes)
+    // Minor blues: root, minor 3rd, 4th, flat 5th (blue note), 5th, minor 7th
+    private val MINOR_BLUES_INTERVALS = intArrayOf(0, 3, 5, 6, 7, 10)
+    
+    // Major blues: root, 2nd, minor 3rd (blue note), major 3rd, 5th, 6th
+    private val MAJOR_BLUES_INTERVALS = intArrayOf(0, 2, 3, 4, 7, 9)
     
     // Reference frequency: A4 = 440 Hz
     private const val A4_FREQUENCY = 440.0f
     private const val A4_MIDI_NOTE = 69
     
     /**
-     * Get the semitone intervals for a given scale type
+     * Get the semitone intervals for a given scale type (with blue notes)
      */
     fun getIntervals(scaleType: ScaleType): IntArray {
         return when (scaleType) {
-            ScaleType.MAJOR -> MAJOR_PENTATONIC_INTERVALS
-            ScaleType.MINOR -> MINOR_PENTATONIC_INTERVALS
+            ScaleType.MAJOR -> MAJOR_BLUES_INTERVALS
+            ScaleType.MINOR -> MINOR_BLUES_INTERVALS
         }
     }
     
@@ -48,10 +53,10 @@ object PentatonicScale {
     }
     
     /**
-     * Generate frequencies for a pentatonic scale grid
+     * Generate frequencies for a blues scale grid
      * 
      * @param key The musical key (root note + scale type)
-     * @param numRows Number of rows in the grid (typically 5 or 7)
+     * @param numRows Number of rows in the grid
      * @param baseOctave Starting octave (default 3 for bass, 4 for mid-range)
      * @return List of frequencies in Hz, from lowest (bottom) to highest (top)
      */
@@ -71,16 +76,14 @@ object PentatonicScale {
             val noteSemitone = (key.root.semitone + interval) % 12
             val note = Note.fromSemitone(noteSemitone)
             
-            // Check if we've wrapped around to a new octave
-            if (intervalIndex > 0 && key.root.semitone + interval >= 12) {
-                // We're in the next octave for this note
-            }
-            
-            val midiNote = noteToMidi(note, currentOctave) + 
-                          (if (key.root.semitone + interval >= 12) 0 else 0)
-            
             val actualMidi = (currentOctave + 1) * 12 + key.root.semitone + interval
             val frequency = midiToFrequency(actualMidi)
+            
+            // Determine if this is a blue note
+            val isBlueNote = when (key.scaleType) {
+                ScaleType.MINOR -> interval == 6  // b5 is the blue note in minor
+                ScaleType.MAJOR -> interval == 3  // b3 is the blue note in major
+            }
             
             notes.add(
                 NoteInfo(
@@ -88,7 +91,8 @@ object PentatonicScale {
                     octave = actualMidi / 12 - 1,
                     frequency = frequency,
                     midiNote = actualMidi,
-                    scaleDegree = intervalIndex + 1
+                    scaleDegree = intervalIndex + 1,
+                    isBlueNote = isBlueNote
                 )
             )
             
@@ -119,7 +123,8 @@ data class NoteInfo(
     val octave: Int,
     val frequency: Float,
     val midiNote: Int,
-    val scaleDegree: Int
+    val scaleDegree: Int,
+    val isBlueNote: Boolean = false
 ) {
     val displayName: String
         get() = "${note.displayName}$octave"

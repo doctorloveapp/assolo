@@ -14,7 +14,16 @@ void Oscillator::setSampleRate(float rate) {
 }
 
 void Oscillator::setFrequency(float freq) {
-    frequency = std::clamp(freq, 20.0f, 20000.0f);
+    baseFrequency = std::clamp(freq, 20.0f, 20000.0f);
+    // Apply pitch bend
+    frequency = baseFrequency * std::pow(2.0f, pitchBendSemitones / 12.0f);
+    phaseIncrement = (TWO_PI * frequency) / sampleRate;
+}
+
+void Oscillator::setPitchBend(float semitones) {
+    pitchBendSemitones = std::clamp(semitones, -12.0f, 12.0f);
+    // Recalculate frequency with bend
+    frequency = baseFrequency * std::pow(2.0f, pitchBendSemitones / 12.0f);
     phaseIncrement = (TWO_PI * frequency) / sampleRate;
 }
 
@@ -28,6 +37,7 @@ void Oscillator::setAmplitude(float amp) {
 
 void Oscillator::noteOn(float freq) {
     setFrequency(freq);
+    pitchBendSemitones = 0.0f;  // Reset pitch bend on new note
     phase = 0.0f; // Reset fase per consistenza
     envelope.noteOn();
 }

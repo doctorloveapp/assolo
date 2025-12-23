@@ -27,6 +27,7 @@ public:
     void noteOn(int voiceIndex, float frequency);
     void noteOff(int voiceIndex);
     void allNotesOff();
+    void setPitchBend(int voiceIndex, float semitones);  // Pitch bend per una voce
     
     // Configurazione
     void setMasterVolume(float volume);
