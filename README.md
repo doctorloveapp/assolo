@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.0.5-E94560?style=flat&logo=semantic-release&logoColor=white" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.7.5-E94560?style=flat&logo=semantic-release&logoColor=white" alt="Version">
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=flat&logo=android&logoColor=white" alt="Platform">
   <img src="https://img.shields.io/badge/Min%20SDK-26-blue?style=flat" alt="Min SDK">
   <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=flat&logo=kotlin&logoColor=white" alt="Language">
