@@ -1,14 +1,21 @@
 package com.smartinstrument.app.ui.screens
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,9 +25,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +48,7 @@ import com.smartinstrument.app.ui.components.*
 import com.smartinstrument.app.ui.theme.AccentPink
 import com.smartinstrument.app.ui.theme.DarkBackground
 import com.smartinstrument.app.ui.theme.DarkSurface
+import kotlinx.coroutines.launch
 
 /**
  * MainScreen - The main instrument playing screen with track player
@@ -54,6 +64,10 @@ fun MainScreen(
     onAnalyzeAssetTrack: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    
     // State
     var currentKey by remember { mutableStateOf(MusicalKey(Note.C, ScaleType.MINOR)) }
     var numRows by remember { mutableIntStateOf(18) }  // Default 18 rows
@@ -65,6 +79,7 @@ fun MainScreen(
     var showPlayer by remember { mutableStateOf(true) }
     var guitarParams by remember { mutableStateOf(GuitarParams()) }
     var wahEnabled by remember { mutableStateOf(false) }
+    var showInstructions by remember { mutableStateOf(false) }
     
     // Track player state
     val isPlaying by trackPlayer.isPlaying.collectAsState()
@@ -72,6 +87,14 @@ fun MainScreen(
     val trackName by trackPlayer.trackName.collectAsState()
     val currentPosition by trackPlayer.currentPosition.collectAsState()
     val duration by trackPlayer.duration.collectAsState()
+    
+    // Auto-hide panels when playback starts
+    LaunchedEffect(isPlaying) {
+        if (isPlaying) {
+            showSettings = false
+            showPlayer = false
+        }
+    }
     
     // Auto-apply detected key - always use MINOR for blues feel
     // If song is in E Major, we play E Minor pentatonic for that classic blues sound
@@ -115,9 +138,62 @@ fun MainScreen(
         audioEngine.setWahEnabled(wahEnabled)
     }
     
+    // Instructions Dialog
+    if (showInstructions) {
+        InstructionsDialog(onDismiss = { showInstructions = false })
+    }
+    
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            AppDrawerContent(
+                currentVersion = "3.0.1",
+                onInstructions = {
+                    scope.launch { drawerState.close() }
+                    showInstructions = true
+                },
+                onInstruments = {
+                    scope.launch { drawerState.close() }
+                    showSettings = true
+                },
+                onTracks = {
+                    scope.launch { drawerState.close() }
+                    showPlayer = true
+                },
+                onPrivacyPolicy = {
+                    scope.launch { drawerState.close() }
+                    openUrl(context, "https://github.com/doctorloveapp/assolo/blob/main/PRIVACY_POLICY.md")
+                },
+                onContact = {
+                    scope.launch { drawerState.close() }
+                    sendEmail(context, "doctorloveapp@gmail.com")
+                },
+                onRateApp = {
+                    scope.launch { drawerState.close() }
+                    openPlayStore(context)
+                },
+                onShare = {
+                    scope.launch { drawerState.close() }
+                    shareApp(context)
+                },
+                onCredits = {
+                    scope.launch { drawerState.close() }
+                    openUrl(context, "https://github.com/doctorloveapp/assolo")
+                }
+            )
+        }
+    ) {
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Menu"
+                        )
+                    }
+                },
                 title = {
                     Column {
                         Text(
@@ -173,9 +249,10 @@ fun MainScreen(
                             contentDescription = if (showPlayer) "Nascondi Player" else "Mostra Player"
                         )
                     }
+                    // Toggle Settings visibility
                     IconButton(onClick = { showSettings = !showSettings }) {
                         Icon(
-                            imageVector = if (showSettings) Icons.Default.Close else Icons.Default.Settings,
+                            imageVector = Icons.Default.Settings,
                             contentDescription = "Settings"
                         )
                     }
@@ -293,6 +370,7 @@ fun MainScreen(
         }
         }  // Close background Box
     }
+    }  // Close ModalNavigationDrawer
 }
 
 /**
@@ -814,5 +892,309 @@ fun WahPedalControl(
                 color = Color.White.copy(alpha = 0.6f)
             )
         }
+    }
+}
+
+/**
+ * App Drawer Content - Main navigation menu
+ */
+@Composable
+fun AppDrawerContent(
+    currentVersion: String,
+    onInstructions: () -> Unit,
+    onInstruments: () -> Unit,
+    onTracks: () -> Unit,
+    onPrivacyPolicy: () -> Unit,
+    onContact: () -> Unit,
+    onRateApp: () -> Unit,
+    onShare: () -> Unit,
+    onCredits: () -> Unit
+) {
+    ModalDrawerSheet(
+        drawerContainerColor = DarkSurface,
+        modifier = Modifier.width(300.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Header
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(AccentPink, AccentPink.copy(alpha = 0.7f))
+                        )
+                    )
+                    .padding(24.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "🎸 Assolo",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Smart Blues Instrument",
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Menu Items
+            DrawerMenuItem(
+                icon = Icons.Outlined.Info,
+                title = "📖 Istruzioni",
+                onClick = onInstructions
+            )
+            
+            DrawerMenuItem(
+                icon = Icons.Outlined.Settings,
+                title = "🎹 Scelta Strumenti",
+                onClick = onInstruments
+            )
+            
+            DrawerMenuItem(
+                icon = Icons.Outlined.PlayArrow,
+                title = "🎵 Brani",
+                onClick = onTracks
+            )
+            
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                color = Color.White.copy(alpha = 0.1f)
+            )
+            
+            DrawerMenuItem(
+                icon = Icons.Outlined.Lock,
+                title = "🔒 Privacy Policy",
+                onClick = onPrivacyPolicy
+            )
+            
+            DrawerMenuItem(
+                icon = Icons.Outlined.Email,
+                title = "✉️ Contattaci",
+                onClick = onContact
+            )
+            
+            DrawerMenuItem(
+                icon = Icons.Outlined.Star,
+                title = "⭐ Valuta App",
+                onClick = onRateApp
+            )
+            
+            DrawerMenuItem(
+                icon = Icons.Outlined.Share,
+                title = "📤 Condividi",
+                onClick = onShare
+            )
+            
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                color = Color.White.copy(alpha = 0.1f)
+            )
+            
+            DrawerMenuItem(
+                icon = Icons.Outlined.Info,
+                title = "📜 Crediti & Licenze",
+                onClick = onCredits
+            )
+            
+            // Version at bottom
+            Spacer(modifier = Modifier.weight(1f))
+            
+            Text(
+                text = "Versione $currentVersion",
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.padding(16.dp)
+            )
+            
+            Text(
+                text = "© 2025 Doctor Love App",
+                fontSize = 11.sp,
+                color = Color.White.copy(alpha = 0.4f),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Single menu item in the drawer
+ */
+@Composable
+fun DrawerMenuItem(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.8f),
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = title,
+            fontSize = 15.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+/**
+ * Instructions Dialog
+ */
+@Composable
+fun InstructionsDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        title = {
+            Text(
+                text = "📖 Come Usare Assolo",
+                color = AccentPink,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                InstructionItem(
+                    emoji = "1️⃣",
+                    title = "Carica un Brano",
+                    description = "Scegli un brano incluso o carica un MP3 dal tuo dispositivo"
+                )
+                InstructionItem(
+                    emoji = "2️⃣",
+                    title = "Analisi Automatica",
+                    description = "Assolo rileva automaticamente la tonalità del brano"
+                )
+                InstructionItem(
+                    emoji = "3️⃣",
+                    title = "Premi Play",
+                    description = "Avvia la riproduzione - l'interfaccia si semplifica per suonare"
+                )
+                InstructionItem(
+                    emoji = "4️⃣",
+                    title = "Suona la Griglia",
+                    description = "Tocca le note - sono tutte nella scala giusta, impossibile sbagliare!"
+                )
+                InstructionItem(
+                    emoji = "🎸",
+                    title = "Bend e Vibrato",
+                    description = "Scorri orizzontalmente per il bend. Tieni premuto per il vibrato automatico"
+                )
+                InstructionItem(
+                    emoji = "🎹",
+                    title = "Cambia Strumento",
+                    description = "Scegli tra Organ, Guitar, Bass, Synth e Square dal pannello impostazioni"
+                )
+                InstructionItem(
+                    emoji = "🎸",
+                    title = "Wah Pedal",
+                    description = "Con la chitarra, attiva il WAH e scorri il pedale per l'effetto Cry Baby"
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Ho Capito!", color = AccentPink)
+            }
+        }
+    )
+}
+
+@Composable
+fun InstructionItem(
+    emoji: String,
+    title: String,
+    description: String
+) {
+    Row(verticalAlignment = Alignment.Top) {
+        Text(
+            text = emoji,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(end = 12.dp)
+        )
+        Column {
+            Text(
+                text = title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+            Text(
+                text = description,
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+// Helper functions for drawer actions
+private fun openUrl(context: Context, url: String) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        // Handle error silently
+    }
+}
+
+private fun sendEmail(context: Context, email: String) {
+    try {
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("mailto:$email")
+            putExtra(Intent.EXTRA_SUBJECT, "Assolo - Feedback")
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        // Handle error silently
+    }
+}
+
+private fun openPlayStore(context: Context) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.smartinstrument.app"))
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        // Fallback to browser
+        openUrl(context, "https://play.google.com/store/apps/details?id=com.smartinstrument.app")
+    }
+}
+
+private fun shareApp(context: Context) {
+    try {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "Assolo - Smart Blues Instrument")
+            putExtra(Intent.EXTRA_TEXT, "🎸 Assolo - Suona il blues come un professionista!\n\nScaricalo gratis: https://play.google.com/store/apps/details?id=com.smartinstrument.app")
+        }
+        context.startActivity(Intent.createChooser(intent, "Condividi Assolo"))
+    } catch (e: Exception) {
+        // Handle error silently
     }
 }

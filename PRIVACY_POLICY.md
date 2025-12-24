@@ -63,17 +63,21 @@ We may update this Privacy Policy from time to time. We will notify you of any c
 
 Assolo is open source software. You can review our complete source code to verify our privacy practices:
 
-- GitHub: [https://github.com/smartinstrument/smart-instrument](https://github.com/smartinstrument/smart-instrument)
+- GitHub: [https://github.com/doctorloveapp/assolo](https://github.com/doctorloveapp/assolo)
 
 ## Contact Us
 
 If you have any questions about this Privacy Policy, please contact us:
 
-- Email: [privacy@smartinstrument.app](mailto:privacy@smartinstrument.app)
-- GitHub Issues: [https://github.com/smartinstrument/smart-instrument/issues](https://github.com/smartinstrument/smart-instrument/issues)
+- Email: [doctorloveapp@gmail.com](mailto:doctorloveapp@gmail.com)
+- GitHub Issues: [https://github.com/doctorloveapp/assolo/issues](https://github.com/doctorloveapp/assolo/issues)
 
 ---
 
 ## Summary
 
 **TL;DR**: Assolo respects your privacy. We don't collect any data. Everything stays on your device. Play music, not with your privacy.
+
+---
+
+*© 2025 Doctor Love App. All rights reserved.*

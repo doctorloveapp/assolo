@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.8.9-E94560?style=for-the-badge&logo=semantic-release&logoColor=white" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.0.1-E94560?style=for-the-badge&logo=semantic-release&logoColor=white" alt="Version">
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Platform">
   <img src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Language">
   <img src="https://img.shields.io/badge/C++-17-00599C?style=for-the-badge&logo=cplusplus&logoColor=white" alt="C++">
@@ -347,7 +347,7 @@ cd Assolo
 - [x] Manual key selection
 - [x] Basic waveforms (Sine, Saw, Square, Triangle)
 
-### ✅ Version 2.x — Expression (Current: 2.8.9)
+### ✅ Version 2.x — Expression
 - [x] Backing track player with ExoPlayer
 - [x] Automatic key detection (bass-focused algorithm)
 - [x] Guitar-style pitch bend
@@ -363,7 +363,16 @@ cd Assolo
 - [x] Configurable row count (10/15/18)
 - [x] Guitar settings dialog (sustain, gain, distortion, reverb)
 
-### 🔮 Version 3.x — Pro Features (Planned)
+### ✅ Version 3.x — Play Store Ready (Current: 3.0.1)
+- [x] **Navigation Drawer Menu** with full app navigation
+- [x] **Auto-hide panels** when playback starts (focus on playing)
+- [x] **Instructions dialog** for new users
+- [x] **Privacy Policy** integration
+- [x] **Contact**, **Rate App**, **Share** features
+- [x] **Credits & Licenses** link
+- [x] Play Store ready packaging
+
+### 🔮 Version 4.x — Pro Features (Planned)
 - [ ] Loop markers for backing tracks
 - [ ] Chord detection display
 - [ ] MIDI output support
