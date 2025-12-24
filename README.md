@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-3.0.1-E94560?style=for-the-badge&logo=semantic-release&logoColor=white" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.7.1-E94560?style=for-the-badge&logo=semantic-release&logoColor=white" alt="Version">
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Platform">
   <img src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Language">
   <img src="https://img.shields.io/badge/C++-17-00599C?style=for-the-badge&logo=cplusplus&logoColor=white" alt="C++">
@@ -81,35 +81,44 @@ Unlike traditional instrument apps, Assolo **automatically detects the key** of 
 
 ### 🏛️ 5 Professional Instrument Sounds
 
-| Sound | Technology | Character |
-|-------|------------|-----------||
-| **⚡ Guitar** | Oscillator + Multi-stage Tube Distortion | Crunchy electric guitar with configurable sustain, gain, distortion & reverb |
-| **🎹 Organ** | Hammond B3 Additive Synthesis | Warm, full drawbar sound (888800000 preset) |
-| **🎷 Synth** | Classic Sawtooth | Bright, buzzy synth lead |
-| **⬛ Square** | Square Wave | Hollow, retro 8-bit character |
-| **🎸 Bass** | Fender P-Bass Oscillator | Deep, punchy bass with natural harmonics |
+Each instrument has **customizable settings** (double-tap the selected instrument to open):
 
-### 🎸 Dunlop Cry Baby Wah Pedal
+| Sound | Technology | Settings |
+|-------|------------|----------|
+| **⚡ Guitar** | Oscillator + Multi-stage Tube Distortion | Sustain, Gain, Distortion, Reverb |
+| **🎹 Organ** | Classic Tonewheel Synthesis | Drawbar, Leslie Speed, Chorus/Vibrato, Overdrive |
+| **🎷 Synth** | Classic Sawtooth | Attack, Filter Cutoff, Resonance, Chorus |
+| **🎸 Bass** | Electric Bass Oscillator | Tone, Attack/Punch, Sustain, Compression |
+| **🥁 Drums** | Electronic Drum Kit | Kick, Snare, Hi-Hat, Ride, Tom |
 
-The Guitar sound features a **realistic Cry Baby wah pedal**:
+### 🎸 Wah Pedal Effect
+
+The Guitar sound features a **realistic wah pedal**:
 
 | Feature | Description |
-|---------|-------------|
+|---------|--------------|
 | **Auto Mode** | LFO-driven sweep oscillates automatically |
 | **Manual Mode** | Touch-controlled pedal position |
 | **Swipe Control** | Horizontal finger drag simulates foot movement |
 | **Visual Feedback** | Animated pedal tilts following finger position |
-| **Bandpass Sweep** | Authentic 400-2000 Hz frequency range |
+| **Bandpass Sweep** | Classic 400-2000 Hz frequency range |
 
 ### 🎵 Built-in Backing Tracks
 
-Assolo includes **3 professional backing tracks** ready to jam:
+Assolo includes **5 professional backing tracks** organized by genre:
 
+🔵 **Blues**
+- **Blues in A** — Soulful slow blues
 - **Blues in E** — Classic 12-bar blues shuffle
-- **Blues Shuffle in G** — Upbeat shuffle feel  
-- **Slow Blues in A** — Expressive slow blues
+- **Blues Shuffle in G** — Upbeat shuffle feel
 
-All tracks are **automatically analyzed** for key detection when selected.
+🔴 **Rock**
+- **Rock n Roll in A** — High-energy rock groove
+
+⚫ **Metal**
+- **Metal in Bm** — Heavy metal riff track
+
+All tracks are **automatically analyzed** for key detection when selected. The track menu displays genres with **color-coded categories** for easy navigation.
 
 ### 🔍 Intelligent Key Detection
 
@@ -132,7 +141,7 @@ All tracks are **automatically analyzed** for key detection when selected.
 ### 🎧 Professional Backing Track Player
 
 - **Format Support**: MP3, WAV, AAC, FLAC via Media3 ExoPlayer
-- **Built-in Tracks**: 3 blues backing tracks included (E, G, A)
+- **Built-in Tracks**: 5 backing tracks (Blues, Rock, Metal) with color-coded genre menu
 - **Load from File**: Import your own backing tracks
 - **Auto Key Detection**: Built-in tracks are automatically analyzed
 - **Transport Controls**: Play, Pause, Stop, Seek
@@ -215,14 +224,14 @@ The guitar sound uses **oscillator-based synthesis** with a professional effects
 1. Oscillator Mix (Saw 70% + Square 30% with slight detune)
 2. Single-coil Pickup Filter (high-pass 120Hz, low-pass 5kHz)
 3. Multi-stage Tube Distortion (soft clipping with harmonics)
-4. Cry Baby Wah Pedal (bandpass 400-2000Hz sweep)
+4. Wah Pedal (bandpass 400-2000Hz sweep)
 5. Plate Reverb (3 comb filters with diffusion)
 6. ADSR Envelope (configurable sustain)
 ```
 
-### Audio Engine: Fender P-Bass Synthesis
+### Audio Engine: Electric Bass Synthesis
 
-The bass sound emulates a **Fender Precision Bass**:
+The bass sound emulates a **classic electric bass**:
 
 ```cpp
 // P-Bass Oscillator Mix
@@ -231,12 +240,12 @@ sample = 0.7f * saw + 0.3f * square;  // Fat, punchy tone
 // Subtle compression for punch
 ```
 
-### Audio Engine: Hammond B3 Organ Synthesis
+### Audio Engine: Classic Organ Synthesis
 
-The organ sound uses **additive synthesis** with the classic drawbar configuration:
+The organ sound uses **additive synthesis** with the classic tonewheel drawbar configuration:
 
 ```cpp
-// Hammond B3 "888800000" Jazz Preset
+// Classic Tonewheel "888800000" Jazz Preset
 sample += sin(phase * 0.5);   // 16' Sub-octave
 sample += sin(phase * 1.5);   // 5⅓' Quint
 sample += sin(phase);         // 8' Fundamental
@@ -353,24 +362,30 @@ cd Assolo
 - [x] Guitar-style pitch bend
 - [x] Automatic vibrato (700ms hold trigger)
 - [x] Blues scale with highlighted blue notes
-- [x] **Hammond B3 organ** sound (additive synthesis)
+- [x] **Classic tonewheel organ** sound (additive synthesis)
 - [x] **Electric Guitar** with multi-stage tube distortion
-- [x] **Dunlop Cry Baby Wah pedal** (auto & manual modes)
-- [x] **Fender P-Bass** oscillator-based synthesis
+- [x] **Wah pedal** effect (auto & manual modes)
+- [x] **Electric Bass** oscillator-based synthesis
 - [x] **Plate Reverb** effect (3 comb filters)
 - [x] **Built-in backing tracks** (3 blues tracks)
 - [x] Independent volume controls
 - [x] Configurable row count (10/15/18)
 - [x] Guitar settings dialog (sustain, gain, distortion, reverb)
 
-### ✅ Version 3.x — Play Store Ready (Current: 3.0.1)
+### ✅ Version 3.x — Play Store Ready (Current: 3.7.1)
 - [x] **Navigation Drawer Menu** with full app navigation
 - [x] **Auto-hide panels** when playback starts (focus on playing)
-- [x] **Instructions dialog** for new users
-- [x] **Privacy Policy** integration
+- [x] **Instructions dialog** with complete user guide
+- [x] **Per-instrument settings** (double-tap to open advanced settings)
+- [x] **Privacy Policy dialog** (shows policy directly in-app)
+- [x] **Credits & Licenses dialog** with all attributions
+- [x] **Language selector** (Italian, English coming soon)
 - [x] **Contact**, **Rate App**, **Share** features
-- [x] **Credits & Licenses** link
 - [x] Play Store ready packaging
+- [x] **Drums instrument** — Electronic drum kit with Kick, Snare, Hi-Hat, Ride, Tom
+- [x] **5 backing tracks** — Blues, Rock, Metal genres
+- [x] **Genre-organized track menu** — Color-coded categories (Blue/Red/Gray)
+- [x] **Test keyboard** in instrument settings dialogs
 
 ### 🔮 Version 4.x — Pro Features (Planned)
 - [ ] Loop markers for backing tracks
@@ -451,8 +466,7 @@ SOFTWARE.
 | [Google Oboe](https://github.com/google/oboe) | High-performance audio I/O |
 | [Media3 ExoPlayer](https://developer.android.com/guide/topics/media/exoplayer) | Media playback |
 | [Jetpack Compose](https://developer.android.com/jetpack/compose) | Modern UI toolkit |
-| [Dunlop Cry Baby](https://www.jimdunlop.com/cry-baby/) | Wah pedal inspiration |
-| [Fender P-Bass](https://www.fender.com) | Bass tone reference |
+
 
 ---
 

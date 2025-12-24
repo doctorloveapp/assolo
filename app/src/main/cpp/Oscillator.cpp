@@ -97,6 +97,11 @@ void Oscillator::noteOn(float freq) {
     stringEnergy = 1.0f;
     stringInitialized = true;
     
+    // Reset drum synthesis state
+    drumPhase2 = 0.0f;
+    drumDecay = 1.0f;
+    drumNoiseLevel = 0.0f;
+    
     envelope.noteOn();
 }
 
@@ -111,6 +116,11 @@ void Oscillator::reset() {
     stringEnergy = 1.0f;
     filterState = 0.0f;
     filterState2 = 0.0f;
+    
+    // Reset drum state
+    drumPhase2 = 0.0f;
+    drumDecay = 1.0f;
+    drumNoiseLevel = 0.0f;
     
     // Clear reverb buffers
     std::fill(reverbBuffer1.begin(), reverbBuffer1.end(), 0.0f);
@@ -182,9 +192,9 @@ float Oscillator::applyDistortion(float input, float drive) {
 }
 
 /**
- * Dunlop Cry Baby Wah Pedal Simulation
+ * Wah Pedal Simulation
  * Classic wah is a bandpass filter with sweeping center frequency
- * Cry Baby: Q ~= 5-8, frequency range ~400Hz to ~2.2kHz
+ * Q ~= 5-8, frequency range ~400Hz to ~2.2kHz
  * Supports both auto-wah (LFO) and manual pedal control
  */
 float Oscillator::applyWah(float input) {
@@ -205,14 +215,14 @@ float Oscillator::applyWah(float input) {
         currentPosition = wahPosition;
     }
     
-    // Cry Baby frequency range: ~400 Hz (heel) to ~2200 Hz (toe)
+    // Wah frequency range: ~400 Hz (heel) to ~2200 Hz (toe)
     // Using normalized frequency (0-1 range relative to sample rate)
     float minFreq = 400.0f / sampleRate;
     float maxFreq = 2200.0f / sampleRate;
     float centerFreq = minFreq + currentPosition * (maxFreq - minFreq);
     
     // Bandpass filter coefficients (state variable filter)
-    // Q factor: Cry Baby has high Q for that vocal "wah" character
+    // High Q for that vocal "wah" character
     float Q = 6.0f;  // High Q for narrow, vocal-like sweep
     float f = 2.0f * std::sin(3.14159f * centerFreq);  // Filter frequency
     float q = 1.0f / Q;
@@ -228,7 +238,7 @@ float Oscillator::applyWah(float input) {
     // Mix: mostly wah effect with some dry signal for clarity
     float wet = 0.75f * bandpass + 0.25f * input;
     
-    // Slight saturation for that classic Cry Baby warmth
+    // Slight saturation for warmth
     wet = std::tanh(wet * 1.5f);
     
     return wet;
@@ -338,7 +348,7 @@ float Oscillator::generateElectricGuitar() {
     // ===========================================
     float output = distorted * (1.3f + guitarGain * 0.7f);
     
-    // Apply Cry Baby Wah (before reverb for classic sound)
+    // Apply Wah effect (before reverb for classic sound)
     output = applyWah(output);
     
     // Apply reverb
@@ -351,13 +361,13 @@ float Oscillator::generateElectricGuitar() {
 }
 
 /**
- * FENDER PRECISION BASS - Oscillator-based, deep and punchy
+ * ELECTRIC BASS - Oscillator-based, deep and punchy
  * NO plucked string - continuous powerful bass tone
  */
 float Oscillator::generateElectricBass() {
     // ===========================================
-    // OSCILLATOR BASE: Fender P-Bass character
-    // Split-coil pickup = fat, round, punchy
+    // OSCILLATOR BASE: Electric Bass character
+    // Split-coil pickup style = fat, round, punchy
     // ===========================================
     
     // Fundamental is KING for bass
@@ -385,7 +395,7 @@ float Oscillator::generateElectricBass() {
     float raw = oscillator + harmonics * 0.3f;
     
     // ===========================================
-    // TONE CONTROL: Deep low-pass for that Fender thump
+    // TONE CONTROL: Deep low-pass for bass thump
     // ===========================================
     float cutoff = 0.2f;  // Low cutoff = deep bass
     filterState = filterState + cutoff * (raw - filterState);
@@ -428,6 +438,110 @@ float Oscillator::generateElectricBass() {
     return output;
 }
 
+/**
+ * generateDrum - Electronic drum synthesis
+ * Uses FM synthesis and filtered noise for realistic drum sounds
+ * Different drum types based on frequency:
+ * - Low freq (< 100 Hz): Kick drum
+ * - Mid-low freq (100-250 Hz): Toms
+ * - Mid freq (200-400 Hz): Snare
+ * - High freq (> 400 Hz): Hi-hat/Cymbals
+ */
+float Oscillator::generateDrum() {
+    // Determine drum type based on frequency
+    float drumType = 0.0f;  // 0 = kick, 1 = tom, 2 = snare, 3 = hihat
+    float pitchDecay = 0.0f;
+    float noiseAmount = 0.0f;
+    float fmAmount = 0.0f;
+    float decayRate = 0.0f;
+    
+    if (baseFrequency < 100.0f) {
+        // KICK DRUM
+        drumType = 0.0f;
+        pitchDecay = 0.995f;     // Pitch drops quickly
+        noiseAmount = 0.05f;     // Little noise
+        fmAmount = 4.0f;         // Strong FM for punch
+        decayRate = 0.9995f;     // Long decay
+    } else if (baseFrequency < 250.0f) {
+        // TOM
+        drumType = 1.0f;
+        pitchDecay = 0.998f;
+        noiseAmount = 0.1f;
+        fmAmount = 2.0f;
+        decayRate = 0.999f;
+    } else if (baseFrequency < 350.0f) {
+        // SNARE
+        drumType = 2.0f;
+        pitchDecay = 0.99f;
+        noiseAmount = 0.6f;      // Lots of noise (snare wires)
+        fmAmount = 1.5f;
+        decayRate = 0.9985f;
+    } else if (baseFrequency < 700.0f) {
+        // CRASH / RIDE CYMBALS (400-700 Hz range)
+        drumType = 3.5f;
+        pitchDecay = 1.0f;       // No pitch decay
+        noiseAmount = 0.85f;     // Mostly noise
+        fmAmount = 0.8f;
+        decayRate = 0.9997f;     // Long sustain for cymbals
+    } else {
+        // HI-HAT / OPEN HI-HAT (>700 Hz)
+        drumType = 4.0f;
+        pitchDecay = 1.0f;       // No pitch decay
+        noiseAmount = 0.9f;      // Mostly noise
+        fmAmount = 0.5f;
+        decayRate = 0.9992f;     // Medium decay for hi-hat
+    }
+    
+    // Apply amplitude decay
+    drumDecay *= decayRate;
+    if (drumDecay < 0.001f) drumDecay = 0.001f;
+    
+    // FM synthesis for body
+    float modPhase = drumPhase2 * fmAmount;
+    float fmMod = sin(modPhase) * drumDecay * 2.0f;
+    float carrier = sin(phase + fmMod);
+    
+    // Advance modulator phase (faster for punch)
+    drumPhase2 += phaseIncrement * 1.5f;
+    if (drumPhase2 >= TWO_PI) drumPhase2 -= TWO_PI;
+    
+    // Pitch envelope for kick/tom punch
+    if (drumType < 2.0f && drumDecay > 0.5f) {
+        phaseIncrement *= pitchDecay;
+    }
+    
+    // Noise component
+    float noise = noiseDist(rng);
+    
+    // High-pass filter for hi-hat and cymbals
+    if (drumType > 3.0f) {
+        // Metallic hi-hat/cymbal with high-pass filtered noise
+        float prevNoise = drumNoiseLevel;
+        drumNoiseLevel = noise * 0.5f + prevNoise * 0.5f;
+        noise = noise - drumNoiseLevel;  // High-pass
+        noise *= 2.5f;  // Boost for audibility
+    }
+    
+    // Mix FM and noise
+    float output = carrier * (1.0f - noiseAmount) + noise * noiseAmount;
+    
+    // Apply decay envelope
+    output *= drumDecay;
+    
+    // Extra punch for kick
+    if (drumType < 0.5f && drumDecay > 0.7f) {
+        output *= 1.8f;  // Initial transient boost
+    }
+    
+    // Volume boost for drums - make them LOUD
+    output *= 2.5f;
+    
+    // Soft clip
+    output = std::tanh(output * 1.5f);
+    
+    return output;
+}
+
 float Oscillator::generateWave() {
     switch (waveType) {
         case WaveType::Sine:
@@ -436,8 +550,8 @@ float Oscillator::generateWave() {
         case WaveType::Sawtooth:
             return (phase / static_cast<float>(M_PI)) - 1.0f;
             
-        case WaveType::Square:
-            return phase < static_cast<float>(M_PI) ? 1.0f : -1.0f;
+        case WaveType::Drums:
+            return generateDrum();
             
         case WaveType::Bass:
             return generateElectricBass();

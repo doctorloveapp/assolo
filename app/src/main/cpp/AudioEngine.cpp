@@ -143,7 +143,7 @@ void AudioEngine::setWaveType(int type) {
     switch (type) {
         case 0: waveType = Oscillator::WaveType::Sine; break;     // Hammond B3
         case 1: waveType = Oscillator::WaveType::Sawtooth; break; // Synth Lead
-        case 2: waveType = Oscillator::WaveType::Square; break;   // Retro
+        case 2: waveType = Oscillator::WaveType::Drums; break;    // Electronic Drums
         case 3: waveType = Oscillator::WaveType::Bass; break;     // Electric Bass
         case 4: waveType = Oscillator::WaveType::Guitar; break;   // Electric Guitar
         default: waveType = Oscillator::WaveType::Sawtooth; break;

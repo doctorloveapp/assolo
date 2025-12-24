@@ -16,9 +16,9 @@ class NativeAudioEngine {
         const val MAX_VOICES = 8
         
         // Tipi di strumento
-        const val WAVE_SINE = 0      // Hammond B3 organ
+        const val WAVE_SINE = 0      // Classic tonewheel organ
         const val WAVE_SAWTOOTH = 1  // Synth lead
-        const val WAVE_SQUARE = 2    // Retro square
+        const val WAVE_DRUMS = 2     // Electronic drums
         const val WAVE_BASS = 3      // Electric Bass with slap
         const val WAVE_GUITAR = 4    // Electric Guitar with distortion
     }
@@ -150,7 +150,7 @@ class NativeAudioEngine {
     }
     
     /**
-     * Attiva/disattiva il Wah pedal (Dunlop Cry Baby)
+     * Attiva/disattiva il Wah pedal
      */
     fun setWahEnabled(enabled: Boolean) {
         if (isCreated) {

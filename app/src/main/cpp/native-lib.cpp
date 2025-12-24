@@ -142,7 +142,7 @@ Java_com_smartinstrument_app_audio_NativeAudioEngine_nativeSetGuitarParams(
 }
 
 /**
- * Attiva/disattiva il Wah pedal (Dunlop Cry Baby)
+ * Attiva/disattiva il Wah pedal
  * @param enabled true per attivare, false per disattivare
  */
 JNIEXPORT void JNICALL

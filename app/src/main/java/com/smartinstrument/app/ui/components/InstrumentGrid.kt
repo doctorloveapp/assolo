@@ -188,9 +188,15 @@ fun InstrumentGrid(
                                     activeTouches[pointerId]?.let { state ->
                                         val currentBendSensitivity = bendSensitivity
                                         
-                                        // Calculate horizontal displacement for bend (always positive)
-                                        val deltaX = kotlin.math.abs(change.position.x - state.startX)
-                                        val manualBend = (deltaX * currentBendSensitivity).coerceIn(0f, 2f)
+                                        // Calculate horizontal displacement for bend (only right direction)
+                                        // Right swipe (positive deltaX) activates bend
+                                        // Left swipe (negative deltaX) returns to zero
+                                        val deltaX = change.position.x - state.startX
+                                        val manualBend = if (deltaX > 0) {
+                                            (deltaX * currentBendSensitivity).coerceIn(0f, 2f)
+                                        } else {
+                                            0f  // Left swipe returns to zero
+                                        }
                                         
                                         // If manually bending, stop auto-vibrato
                                         val isManuallyBending = manualBend > 0.2f

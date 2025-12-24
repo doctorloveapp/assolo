@@ -143,11 +143,31 @@ fun MainScreen(
         InstructionsDialog(onDismiss = { showInstructions = false })
     }
     
+    // State for new dialogs
+    var showCreditsDialog by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    
+    // Credits Dialog
+    if (showCreditsDialog) {
+        CreditsDialog(onDismiss = { showCreditsDialog = false })
+    }
+    
+    // Privacy Policy Dialog
+    if (showPrivacyDialog) {
+        PrivacyPolicyDialog(onDismiss = { showPrivacyDialog = false })
+    }
+    
+    // Language Dialog
+    if (showLanguageDialog) {
+        LanguageDialog(onDismiss = { showLanguageDialog = false })
+    }
+    
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             AppDrawerContent(
-                currentVersion = "3.0.1",
+                currentVersion = "3.7.1",
                 onInstructions = {
                     scope.launch { drawerState.close() }
                     showInstructions = true
@@ -162,7 +182,7 @@ fun MainScreen(
                 },
                 onPrivacyPolicy = {
                     scope.launch { drawerState.close() }
-                    openUrl(context, "https://github.com/doctorloveapp/assolo/blob/main/PRIVACY_POLICY.md")
+                    showPrivacyDialog = true
                 },
                 onContact = {
                     scope.launch { drawerState.close() }
@@ -176,9 +196,13 @@ fun MainScreen(
                     scope.launch { drawerState.close() }
                     shareApp(context)
                 },
+                onLanguage = {
+                    scope.launch { drawerState.close() }
+                    showLanguageDialog = true
+                },
                 onCredits = {
                     scope.launch { drawerState.close() }
-                    openUrl(context, "https://github.com/doctorloveapp/assolo")
+                    showCreditsDialog = true
                 }
             )
         }
@@ -210,7 +234,7 @@ fun MainScreen(
                 actions = {
                     // Wah pedal controls (only visible when Guitar is selected)
                     if (waveType == NativeAudioEngine.WAVE_GUITAR) {
-                        // Cry Baby Wah Pedal Control (only when wah is enabled)
+                        // Wah Pedal Control (only when wah is enabled)
                         if (wahEnabled) {
                             WahPedalControl(
                                 onPositionChange = { position ->
@@ -287,85 +311,107 @@ fun MainScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-            // Track Player Controls (collapsible)
-            if (showPlayer) {
-                TrackPlayerPanel(
-                    trackName = trackName,
-                    isPlaying = isPlaying,
-                    isTrackLoaded = isTrackLoaded,
-                    isAnalyzing = isAnalyzing,
-                    currentPosition = currentPosition,
-                    duration = duration,
-                    trackVolume = trackVolume,
-                    synthVolume = synthVolume,
-                    detectedKey = detectedKey,
-                    builtInTracks = trackPlayer.getBuiltInTracks(),
-                    onSelectTrack = onSelectTrack,
-                    onSelectBuiltInTrack = { fileName ->
-                        trackPlayer.loadAssetTrack(fileName)
-                        onAnalyzeAssetTrack(fileName)
-                    },
-                    onPlayPause = { trackPlayer.togglePlayPause() },
-                    onStop = { trackPlayer.stop() },
-                    onSeek = { trackPlayer.seekTo(it) },
-                    onTrackVolumeChange = { trackVolume = it },
-                    onSynthVolumeChange = { synthVolume = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
-            
-            // Settings panel (collapsible)
-            if (showSettings) {
-                HorizontalDivider(
-                    color = Color.White.copy(alpha = 0.2f),
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+                // Track Player Controls (collapsible)
+                if (showPlayer) {
+                    TrackPlayerPanel(
+                        trackName = trackName,
+                        isPlaying = isPlaying,
+                        isTrackLoaded = isTrackLoaded,
+                        isAnalyzing = isAnalyzing,
+                        currentPosition = currentPosition,
+                        duration = duration,
+                        trackVolume = trackVolume,
+                        synthVolume = synthVolume,
+                        detectedKey = detectedKey,
+                        builtInTracks = trackPlayer.getBuiltInTracks(),
+                        onSelectTrack = onSelectTrack,
+                        onSelectBuiltInTrack = { fileName ->
+                            trackPlayer.loadAssetTrack(fileName)
+                            onAnalyzeAssetTrack(fileName)
+                        },
+                        onPlayPause = { trackPlayer.togglePlayPause() },
+                        onStop = { trackPlayer.stop() },
+                        onSeek = { trackPlayer.seekTo(it) },
+                        onTrackVolumeChange = { trackVolume = it },
+                        onSynthVolumeChange = { synthVolume = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
                 
-                SettingsPanel(
-                    currentKey = currentKey,
-                    detectedKey = detectedKey,
-                    onKeySelected = { currentKey = it },
-                    numRows = numRows,
-                    onRowCountSelected = { numRows = it },
-                    waveType = waveType,
-                    onWaveTypeSelected = { waveType = it },
-                    guitarParams = guitarParams,
-                    onGuitarParamsChanged = { guitarParams = it },
-                    showNoteLabels = showNoteLabels,
-                    onShowNoteLabelsChanged = { showNoteLabels = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
-            
-            HorizontalDivider(
+                // Settings panel (collapsible)
+                if (showSettings) {
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    
+                    SettingsPanel(
+                        currentKey = currentKey,
+                        detectedKey = detectedKey,
+                        onKeySelected = { currentKey = it },
+                        numRows = numRows,
+                        onRowCountSelected = { numRows = it },
+                        waveType = waveType,
+                        onWaveTypeSelected = { waveType = it },
+                        guitarParams = guitarParams,
+                        onGuitarParamsChanged = { guitarParams = it },
+                        showNoteLabels = showNoteLabels,
+                        onShowNoteLabelsChanged = { showNoteLabels = it },
+                        onNoteOn = { voiceIndex, frequency ->
+                            audioEngine.noteOn(voiceIndex, frequency)
+                        },
+                        onNoteOff = { voiceIndex ->
+                            audioEngine.noteOff(voiceIndex)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+                
+                HorizontalDivider(
                 color = Color.White.copy(alpha = 0.2f),
                 modifier = Modifier.padding(vertical = 4.dp)
             )
             
-            // Instrument Grid
+            // Instrument Grid or Drum Pad - takes at least 60% of remaining space
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f, fill = true)
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 200.dp)
                     .padding(horizontal = 8.dp, vertical = 8.dp)
             ) {
-                InstrumentGrid(
-                    notes = scaleNotes,
-                    onNoteOn = { voiceIndex, frequency ->
-                        audioEngine.noteOn(voiceIndex, frequency)
-                    },
-                    onNoteOff = { voiceIndex ->
-                        audioEngine.noteOff(voiceIndex)
-                    },
-                    onPitchBend = { voiceIndex, semitones ->
-                        audioEngine.setPitchBend(voiceIndex, semitones)
-                    },
-                    showNoteLabels = showNoteLabels,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (waveType == NativeAudioEngine.WAVE_DRUMS) {
+                    // Show drum pads for drums
+                    DrumPad(
+                        onDrumHit = { voiceIndex, frequency ->
+                            audioEngine.noteOn(voiceIndex, frequency)
+                        },
+                        onDrumRelease = { voiceIndex ->
+                            audioEngine.noteOff(voiceIndex)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // Show normal instrument grid
+                    InstrumentGrid(
+                        notes = scaleNotes,
+                        onNoteOn = { voiceIndex, frequency ->
+                            audioEngine.noteOn(voiceIndex, frequency)
+                        },
+                        onNoteOff = { voiceIndex ->
+                            audioEngine.noteOff(voiceIndex)
+                        },
+                        onPitchBend = { voiceIndex, semitones ->
+                            audioEngine.setPitchBend(voiceIndex, semitones)
+                        },
+                        showNoteLabels = showNoteLabels,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
         }  // Close background Box
@@ -439,36 +485,123 @@ private fun TrackPlayerPanel(
                     expanded = showTrackMenu,
                     onDismissRequest = { showTrackMenu = false }
                 ) {
-                    // Built-in tracks section
+                    // Built-in tracks section - grouped by genre
                     if (builtInTracks.isNotEmpty()) {
-                        Text(
-                            text = "🎵 Brani Inclusi",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = AccentPink,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                        builtInTracks.forEach { track ->
-                            DropdownMenuItem(
-                                text = { 
-                                    Text(
-                                        text = track.removeSuffix(".mp3"),
-                                        fontSize = 14.sp
-                                    )
-                                },
-                                onClick = {
-                                    onSelectBuiltInTrack(track)
-                                    showTrackMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = null,
-                                        tint = AccentPink
-                                    )
-                                }
+                        // Define colors for each genre
+                        val bluesColor = Color(0xFF1E88E5)  // Blue
+                        val rockColor = Color(0xFFE53935)   // Red
+                        val metalColor = Color(0xFF616161)  // Metal gray
+                        
+                        // Group tracks by genre
+                        val bluesTracks = builtInTracks.filter { 
+                            it.lowercase().contains("blues") 
+                        }.sortedBy { it }
+                        val rockTracks = builtInTracks.filter { 
+                            it.lowercase().contains("rock") 
+                        }.sortedBy { it }
+                        val metalTracks = builtInTracks.filter { 
+                            it.lowercase().contains("metal") 
+                        }.sortedBy { it }
+                        
+                        // Blues Section
+                        if (bluesTracks.isNotEmpty()) {
+                            Text(
+                                text = "🎷 Blues",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = bluesColor,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
+                            bluesTracks.forEach { track ->
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            text = track.removeSuffix(".mp3"),
+                                            fontSize = 14.sp,
+                                            color = bluesColor
+                                        )
+                                    },
+                                    onClick = {
+                                        onSelectBuiltInTrack(track)
+                                        showTrackMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = null,
+                                            tint = bluesColor
+                                        )
+                                    }
+                                )
+                            }
                         }
+                        
+                        // Rock Section
+                        if (rockTracks.isNotEmpty()) {
+                            Text(
+                                text = "🎸 Rock",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = rockColor,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                            rockTracks.forEach { track ->
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            text = track.removeSuffix(".mp3"),
+                                            fontSize = 14.sp,
+                                            color = rockColor
+                                        )
+                                    },
+                                    onClick = {
+                                        onSelectBuiltInTrack(track)
+                                        showTrackMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = null,
+                                            tint = rockColor
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                        
+                        // Metal Section
+                        if (metalTracks.isNotEmpty()) {
+                            Text(
+                                text = "🤘 Metal",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = metalColor,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                            metalTracks.forEach { track ->
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            text = track.removeSuffix(".mp3"),
+                                            fontSize = 14.sp,
+                                            color = metalColor
+                                        )
+                                    },
+                                    onClick = {
+                                        onSelectBuiltInTrack(track)
+                                        showTrackMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = null,
+                                            tint = metalColor
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                        
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
                     
@@ -682,12 +815,16 @@ private fun SettingsPanel(
     onGuitarParamsChanged: (GuitarParams) -> Unit,
     showNoteLabels: Boolean,
     onShowNoteLabelsChanged: (Boolean) -> Unit,
+    onNoteOn: (Int, Float) -> Unit = { _, _ -> },
+    onNoteOff: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(DarkSurface)
+            .heightIn(max = 280.dp)  // Altezza massima per evitare sovrapposizione
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -717,7 +854,9 @@ private fun SettingsPanel(
             currentWaveType = waveType,
             onWaveTypeSelected = onWaveTypeSelected,
             guitarParams = guitarParams,
-            onGuitarParamsChanged = onGuitarParamsChanged
+            onGuitarParamsChanged = onGuitarParamsChanged,
+            onNoteOn = onNoteOn,
+            onNoteOff = onNoteOff
         )
         
         HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
@@ -754,7 +893,7 @@ private fun SettingsPanel(
 }
 
 /**
- * WahPedalControl - A custom Cry Baby wah pedal control
+ * WahPedalControl - A custom wah pedal control
  * Swipe left for heel (low freq), swipe right for toe (high freq)
  * The pedal rocks back and forth following the finger movement
  */
@@ -908,6 +1047,7 @@ fun AppDrawerContent(
     onContact: () -> Unit,
     onRateApp: () -> Unit,
     onShare: () -> Unit,
+    onLanguage: () -> Unit,
     onCredits: () -> Unit
 ) {
     ModalDrawerSheet(
@@ -999,6 +1139,12 @@ fun AppDrawerContent(
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
                 color = Color.White.copy(alpha = 0.1f)
+            )
+            
+            DrawerMenuItem(
+                icon = Icons.Outlined.Settings,
+                title = "🌐 Lingua / Language",
+                onClick = onLanguage
             )
             
             DrawerMenuItem(
@@ -1109,12 +1255,17 @@ fun InstructionsDialog(onDismiss: () -> Unit) {
                 InstructionItem(
                     emoji = "🎹",
                     title = "Cambia Strumento",
-                    description = "Scegli tra Organ, Guitar, Bass, Synth e Square dal pannello impostazioni"
+                    description = "Scegli tra Guitar, Organ, Synth, Square e Bass dal pannello impostazioni"
+                )
+                InstructionItem(
+                    emoji = "⚙️",
+                    title = "Impostazioni Strumento",
+                    description = "Tocca DUE VOLTE l'icona dello strumento selezionato per aprire le impostazioni avanzate (effetti, tono, ecc.)"
                 )
                 InstructionItem(
                     emoji = "🎸",
                     title = "Wah Pedal",
-                    description = "Con la chitarra, attiva il WAH e scorri il pedale per l'effetto Cry Baby"
+                    description = "Con la chitarra, attiva il WAH e scorri il pedale per l'effetto wah"
                 )
             }
         },
@@ -1197,4 +1348,339 @@ private fun shareApp(context: Context) {
     } catch (e: Exception) {
         // Handle error silently
     }
+}
+
+/**
+ * Credits & Licenses Dialog
+ */
+@Composable
+fun CreditsDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        title = {
+            Text(
+                text = "📜 Crediti & Licenze",
+                color = AccentPink,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // App info
+                Text(
+                    text = "🎸 Assolo v3.0.1",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "Smart Blues Instrument\n© 2025 Doctor Love App",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 14.sp
+                )
+                
+                HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
+                
+                // Developer
+                CreditItem(
+                    title = "👨‍💻 Sviluppatore",
+                    description = "Alessandro Giannetti"
+                )
+                
+                HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
+                
+                // Libraries
+                Text(
+                    text = "📚 Librerie Open Source",
+                    color = AccentPink,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                
+                CreditItem(
+                    title = "Google Oboe",
+                    description = "Audio engine ad alta performance\nApache License 2.0"
+                )
+                
+                CreditItem(
+                    title = "Media3 ExoPlayer",
+                    description = "Riproduzione audio professionale\nApache License 2.0"
+                )
+                
+                CreditItem(
+                    title = "Jetpack Compose",
+                    description = "Modern UI toolkit\nApache License 2.0"
+                )
+                
+                CreditItem(
+                    title = "Kotlin",
+                    description = "Linguaggio di programmazione\nApache License 2.0"
+                )
+                
+                HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
+                
+                // Inspiration
+                Text(
+                    text = "🎵 Ispirazione",
+                    color = AccentPink,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                
+                CreditItem(
+                    title = "Organ",
+                    description = "Ispirazione per il suono Organ"
+                )
+                
+                CreditItem(
+                    title = "Wah Pedal",
+                    description = "Effetto classico per chitarra"
+                )
+                
+                CreditItem(
+                    title = "Electric Bass",
+                    description = "Sintesi basso elettrico"
+                )
+                
+                HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
+                
+                // License
+                Text(
+                    text = "📄 Licenza",
+                    color = AccentPink,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                
+                Text(
+                    text = "Assolo è rilasciato sotto licenza MIT.\nIl codice sorgente è disponibile su GitHub.",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 13.sp
+                )
+                
+                // GitHub link
+                TextButton(
+                    onClick = { openUrl(context, "https://github.com/doctorloveapp/assolo") }
+                ) {
+                    Text(
+                        text = "🔗 Visita GitHub Repository",
+                        color = AccentPink,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Chiudi", color = AccentPink)
+            }
+        }
+    )
+}
+
+@Composable
+fun CreditItem(
+    title: String,
+    description: String
+) {
+    Column {
+        Text(
+            text = title,
+            color = Color.White,
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp
+        )
+        Text(
+            text = description,
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 12.sp
+        )
+    }
+}
+
+/**
+ * Privacy Policy Dialog - Shows policy directly without opening browser
+ */
+@Composable
+fun PrivacyPolicyDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        title = {
+            Text(
+                text = "🔒 Privacy Policy",
+                color = AccentPink,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Ultimo aggiornamento: Dicembre 2025",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 12.sp
+                )
+                
+                PolicySection(
+                    title = "📱 Raccolta Dati",
+                    content = "Assolo NON raccoglie alcun dato personale.\n\n" +
+                            "• ❌ Nessun account richiesto\n" +
+                            "• ❌ Nessun tracciamento\n" +
+                            "• ❌ Nessuna pubblicità\n" +
+                            "• ❌ Nessuna condivisione dati"
+                )
+                
+                PolicySection(
+                    title = "💾 Dati Locali",
+                    content = "Tutti i dati restano sul tuo dispositivo:\n\n" +
+                            "• Preferenze audio\n" +
+                            "• Impostazioni strumenti\n" +
+                            "• File audio caricati\n\n" +
+                            "Nulla viene inviato a server esterni."
+                )
+                
+                PolicySection(
+                    title = "🎵 File Audio",
+                    content = "I brani che carichi vengono elaborati localmente per l'analisi della tonalità. " +
+                            "Nessun audio viene mai trasmesso online."
+                )
+                
+                PolicySection(
+                    title = "📋 Permessi",
+                    content = "• Storage/Media: Solo per caricare i tuoi brani\n" +
+                            "• Audio: Per riprodurre i suoni degli strumenti"
+                )
+                
+                PolicySection(
+                    title = "👶 Minori",
+                    content = "L'app è sicura per utenti di tutte le età poiché non raccoglie alcun dato."
+                )
+                
+                PolicySection(
+                    title = "📧 Contatti",
+                    content = "Per domande sulla privacy:\ndoctorloveapp@gmail.com"
+                )
+                
+                Text(
+                    text = "\n© 2025 Doctor Love App. Tutti i diritti riservati.",
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 11.sp
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Chiudi", color = AccentPink)
+            }
+        }
+    )
+}
+
+@Composable
+fun PolicySection(
+    title: String,
+    content: String
+) {
+    Column {
+        Text(
+            text = title,
+            color = AccentPink,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = content,
+            color = Color.White.copy(alpha = 0.8f),
+            fontSize = 13.sp
+        )
+    }
+}
+
+/**
+ * Language Selection Dialog
+ */
+@Composable
+fun LanguageDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        title = {
+            Text(
+                text = "🌐 Lingua / Language",
+                color = AccentPink,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Italian (current)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(AccentPink.copy(alpha = 0.2f))
+                        .clickable { /* Already selected */ }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "🇮🇹", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Italiano",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Selezionato",
+                            color = AccentPink,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                
+                // English (coming soon)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White.copy(alpha = 0.1f))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "🇬🇧", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "English",
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Coming soon...",
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Chiudi", color = AccentPink)
+            }
+        }
+    )
 }

@@ -7,15 +7,15 @@
 
 /**
  * Oscillator - Generatore di forme d'onda
- * Supporta: Hammond B3, Synth Lead, Square, Electric Bass (Fender), Electric Guitar (Distorted)
+ * Supporta: Hammond B3, Synth Lead, Drums, Electric Bass, Electric Guitar (Distorted)
  */
 class Oscillator {
 public:
     enum class WaveType {
         Sine,      // Hammond B3 style (additive synthesis with drawbars)
         Sawtooth,  // Synth lead
-        Square,    // Retro synth
-        Bass,      // Electric Bass - Fender style
+        Drums,     // Electronic drum synthesis
+        Bass,      // Electric Bass
         Guitar     // Electric Guitar with distortion and sustain
     };
 
@@ -52,12 +52,13 @@ private:
     float generateHammondB3() const;
     float generateElectricGuitar();
     float generateElectricBass();
+    float generateDrum();  // Electronic drum synthesis
     void initStringModel();
     
     // Effects
     float applyDistortion(float input, float drive);
     float applyReverb(float input);
-    float applyWah(float input);  // Dunlop Cry Baby wah pedal
+    float applyWah(float input);  // Wah pedal effect
     
     float sampleRate = 48000.0f;
     float frequency = 440.0f;
@@ -76,7 +77,7 @@ private:
     float guitarDistortion = 0.7f;
     float guitarReverb = 0.3f;
     
-    // Wah pedal state (Dunlop Cry Baby simulation)
+    // Wah pedal state
     bool wahEnabled = false;
     bool wahAutoMode = true;       // true = auto-wah LFO, false = manual
     float wahPosition = 0.5f;      // 0.0 heel, 1.0 toe (manual mode)
@@ -100,6 +101,11 @@ private:
     float filterState2 = 0.0f;  // Second filter for bass
     bool stringInitialized = false;
     float stringEnergy = 1.0f;  // Tracks remaining energy for sustain
+    
+    // Drum synthesis state
+    float drumPhase2 = 0.0f;    // Second oscillator for FM
+    float drumDecay = 1.0f;     // Amplitude decay
+    float drumNoiseLevel = 0.0f;  // Noise component level
     
     // Random generator
     std::mt19937 rng;
